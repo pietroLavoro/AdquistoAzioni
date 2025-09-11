@@ -1,0 +1,28 @@
+<h2>Compras registradas</h2>
+
+<button (click)="nuovo()">Nueva compra</button>
+
+<div *ngIf="loading">Cargando...</div>
+
+<table *ngIf="!loading && items.length" border="1" cellpadding="4" cellspacing="0" style="margin-top:1rem">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Título</th>
+      <th>Fecha</th>
+      <th>Cantidad</th>
+      <th>Importe</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let it of items">
+      <td>{{ it.id }}</td>
+      <td>{{ it.titoloCodice }} - {{ it.titoloDescrizione }}</td>
+      <td>{{ it.dataCompra }}</td>
+      <td>{{ it.quantitaTotale }}</td>
+      <td>{{ it.importoTotale }}</td>
+    </tr>
+  </tbody>
+</table>
+
+<p *ngIf="!loading && !items.length">No hay compras.</p>

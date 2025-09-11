@@ -1,0 +1,45 @@
+<h2>Compra de Título</h2>
+
+<form [formGroup]="form" (ngSubmit)="doPreview()"
+      style="display:grid; gap:.5rem; max-width:360px;">
+  <label>Código Título
+    <input formControlName="titoloCodice">
+  </label>
+
+  <label>Fecha (yyyyMMdd)
+    <input formControlName="dataCompra">
+  </label>
+
+  <label>Importe total
+    <input type="number" step="0.01" formControlName="importoTotale">
+  </label>
+
+  <label>Cantidad total
+    <input type="number" formControlName="quantitaTotale">
+  </label>
+
+  <button type="submit" [disabled]="loading">Previsualizar</button>
+</form>
+
+<p *ngIf="error" style="color:red">Error: {{error}}</p>
+
+<div *ngIf="previewData" style="margin-top:1rem">
+  <h3>Previsualización</h3>
+  <p>Importe total: {{previewData.importoTotale}} — Cantidad total: {{previewData.quantitaTotale}}</p>
+
+  <table border="1" cellpadding="4" cellspacing="0">
+    <thead>
+      <tr><th>Agente</th><th>CF</th><th>Importe</th><th>Cantidad</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of previewData.riparto">
+        <td>{{ r.agenteId }}</td>
+        <td>{{ r.codiceFiscale }}</td>
+        <td>{{ r.importoAgente }}</td>
+        <td>{{ r.quantitaAgente }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button (click)="doConferma()">Confirmar compra</button>
+</div>
