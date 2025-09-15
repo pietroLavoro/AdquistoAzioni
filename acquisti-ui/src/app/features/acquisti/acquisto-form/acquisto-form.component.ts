@@ -1,42 +1,40 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Subscription, interval, startWith, switchMap } from 'rxjs';
-import { AcquistiService } from '../acquisti.service';
-import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
+import { interval, Subscription } from 'rxjs';
+import { startWith, switchMap } from 'rxjs/operators';
 
-// Interfaces que usa este componente
-interface AgenteSaldo {
-  agenteId: number;        // <- coincide con el backend
-  codiceFiscale: string;
-  saldoDisponibile: number;
-}
+import {
+  AcquistiService,
+  AgenteSaldo,
+  SuggestimentoData,
+  PreviewRequest,
+  PreviewResponse,
+  AgentiAttiviAllaResponse,   // <-- añade este si lo tienes en el servicio
+} from '@app/acquisti.service';
 
-interface SuggestimentoData {
-  codiceTitolo: string;
-  dataSuggerita: string;
-  numAgenti: number;
-}
 
 @Component({
   selector: 'app-acquisto-form',
   standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, DecimalPipe],
   templateUrl: './acquisto-form.component.html',
-  styleUrls: ['./acquisto-form.component.css'],
-  imports: [
-    CommonModule,            // <= NECESARIO para el pipe "number" (y *ngIf, *ngFor, etc.)
-    ReactiveFormsModule,
-  ],
+  styleUrls: ['./acquisto-form.component.css']
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
-
+  // --- estado general ---
   loading = false;
   error?: string;
 
-  // --- formulario reactivo ---
-  form!: FormGroup;
+  // --- formulario ---
+  form = this.fb.group({
+    titoloCodice: ['', Validators.required],
+    dataCompra: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]], // yyyy-MM-dd
+    importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
+    quantitaTotale: [237, [Validators.required, Validators.min(1)]],
+  });
 
-  // --- panel de saldos "en tiempo real" ---
+  // --- panel derecho: saldos en vivo ---
   saldiLive: AgenteSaldo[] = [];
   polling?: Subscription;
   pollingMs = 5000;
@@ -44,37 +42,30 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   // --- tabla de agentes activos a la fecha elegida ---
   agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
 
-  constructor(
-    private fb: FormBuilder,
-    private api: AcquistiService
-  ) {
-    // inicializamos el form aquí para evitar error "fb used before initialization"
-    this.form = this.fb.group({
-      titoloCodice: ['', Validators.required],
-      dataCompra: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
-      importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
-      quantitaTotale: [237, [Validators.required, Validators.min(1)]],
-    });
-  }
+  constructor(private fb: FormBuilder, private api: AcquistiService) {}
 
-  // ================= Ciclo de vida =====================
+  // ==============================
+  // Ciclo de vida
+  // ==============================
 
   ngOnInit(): void {
-    this.startPollingLive(); // arranca polling de saldos en tiempo real
+    this.startPollingLive();
   }
 
   ngOnDestroy(): void {
     this.polling?.unsubscribe();
   }
 
-  // ================= Lógica =====================
+  // ==============================
+  // Métodos principales
+  // ==============================
 
-  /** polling periódico para saldos */
+  /** Polling periódico de saldos en vivo */
   private startPollingLive(): void {
     this.polling = interval(this.pollingMs)
       .pipe(
         startWith(0),
-        switchMap(() => this.api.getSaldiAgenti()) // <-- endpoint que debes tener en tu service
+        switchMap(() => this.api.getSaldiAgenti())
       )
       .subscribe({
         next: (res) => this.saldiLive = res,
@@ -82,41 +73,32 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Previsualizar compra */
+  /** Previsualiza la compra */
   doPreview(): void {
-    this.error = undefined;
-    const v = this.form.getRawValue();
-    const req = {
-      titoloCodice: v.titoloCodice,
-      dataCompra: v.dataCompra,
-      importoTotale: Number(v.importoTotale),
-      quantitaTotale: Number(v.quantitaTotale),
-    };
+    if (this.form.invalid) return;
+
+    const req: PreviewRequest = this.form.value as PreviewRequest;
+
     this.api.preview(req).subscribe({
-      next: () => alert('Preview ok'),
+      next: (res: PreviewResponse) => {
+        console.log('Preview ok', res);
+        alert('Preview realizada correctamente');
+      },
       error: () => this.error = 'ERROR'
     });
   }
 
-  /** Pide al backend la fecha sugerida con agentes disponibles */
-  sugerirFecha(): void {
-  this.error = undefined;
+  /** Confirma la compra (opcional si ya tienes implementado en el back) */
+  doConferma(): void {
+    if (this.form.invalid) return;
 
-  const titolo = this.form.get('titoloCodice')?.value as string | undefined;
-  if (!titolo) { return; }
+    const req: PreviewRequest = this.form.value as PreviewRequest;
 
-  // usa el número de agentes activos (si ya se cargó) o 0/3 como fallback
-  const numAgenti = this.agentiInfo?.numAgenti ?? 0;
-
-  this.api.suggestData(titolo, numAgenti).subscribe({
-    next: (sug: SuggestimentoData) => {
-      this.form.patchValue({ dataCompra: sug.dataSuggerita });
-      this.verAgentesActivos();   // refresca el panel de agentes/saldos
-    },
-    error: (err: unknown) => { this.error = 'ERROR'; }
-  });
-}
-
+    this.api.conferma(req).subscribe({
+      next: () => alert('Compra confirmada'),
+      error: () => this.error = 'ERROR'
+    });
+  }
 
   /** Pide al backend los agentes activos a la fecha del formulario */
   verAgentesActivos(): void {
@@ -125,17 +107,28 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (!data) return;
 
     this.api.getAgentiAttiviAlla(data).subscribe({
-      next: (res: { data: string; numAgenti: number; agenti: AgenteSaldo[] }) => {
-        this.agentiInfo = res;
-      },
-      error: (err) => {
-        console.error(err);
-        this.error = 'ERROR';
-      }
+      next: (res) => this.agentiInfo = res,
+      error: () => this.error = 'ERROR'
     });
   }
 
-  /** Reinicia saldos de agentes (modo testing) */
+  /** Pide al backend una sugerencia de fecha de compra */
+  sugerirFecha(): void {
+    const titolo = this.form.get('titoloCodice')?.value as string | undefined;
+    if (!titolo) return;
+
+    const numAgenti = this.agentiInfo?.numAgenti ?? 0;
+
+    this.api.suggestData(titolo, numAgenti).subscribe({
+      next: (sug: SuggestimentoData) => {
+        this.form.patchValue({ dataCompra: sug.dataSuggerita });
+        this.verAgentesActivos();
+      },
+      error: () => this.error = 'ERROR'
+    });
+  }
+
+  /** Reinicia los saldos de testing */
   doResetSaldi(): void {
     this.api.resetSaldi().subscribe({
       next: () => this.refreshSaldiLiveOnce(),
@@ -143,10 +136,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Refresca tabla de saldos una vez */
+  /** Refresca manualmente los saldos en vivo una vez */
   private refreshSaldiLiveOnce(): void {
     this.api.getSaldiAgenti().subscribe({
-      next: (res) => this.saldiLive = res
+      next: (res) => this.saldiLive = res,
+      error: () => this.error = 'ERROR'
     });
   }
 }

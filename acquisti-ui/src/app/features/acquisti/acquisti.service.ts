@@ -2,16 +2,20 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-// ====== Tipos compartidos con el componente ======
+/** --- DTOs compartidos --- */
 export interface AgenteSaldo {
-  agenteId: number;
+  id: number;
   codiceFiscale: string;
   saldoDisponibile: number;
 }
 
+export interface SuggestimentoData {
+  dataSuggerita: string; // formato 'yyyy-MM-dd'
+}
+
 export interface PreviewRequest {
   titoloCodice: string;
-  dataCompra: string;       // ISO yyyy-MM-dd
+  dataCompra: string;      // 'yyyy-MM-dd'
   importoTotale: number;
   quantitaTotale: number;
 }
@@ -21,83 +25,55 @@ export interface PreviewResponse {
   dataCompra: string;
   importoTotale: number;
   quantitaTotale: number;
-  riparto: RigaDTO[];
+  riparto: {
+    agenteId: number;
+    codiceFiscale: string;
+    importoAgente: number;
+    quantitaAgente: number;
+  }[];
 }
 
-export interface RigaDTO {
-  agenteId: number;
-  codiceFiscale: string;
-  importoAgente: number;
-  quantitaAgente: number;
-}
+export interface ConfermaRequest extends PreviewRequest {} // misma forma por ahora
 
-export interface SuggestimentoData {
-  dataSuggerita: string;  // ISO yyyy-MM-dd
-  numAgenti: number;
-}
-
-// Respuesta “agentes activos a la fecha”
-export interface AgentiAttiviAllaResponse {
-  data: string;           // ISO de la fecha consultada
-  numAgenti: number;
-  agenti: AgenteSaldo[];
-}
-
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class AcquistiService {
-
-  // Si en tu proxy usas otro prefijo, cámbialo aquí
-  private readonly base = '/api';
+  private readonly baseUrl = '/api'; // <-- adapta si usas otro prefijo
 
   constructor(private http: HttpClient) {}
 
-  // ---------- PREVIEW / CONFERMA ----------
-  preview(req: PreviewRequest): Observable<PreviewResponse> {
-    // POST /api/acquisto/preview
-    return this.http.post<PreviewResponse>(`${this.base}/acquisto/preview`, req);
-  }
-
-  conferma(req: PreviewRequest): Observable<void> {
-    // POST /api/acquisto/conferma
-    return this.http.post<void>(`${this.base}/acquisto/conferma`, req);
-  }
-
-  // ---------- PANEL DERECHO: SALDOS EN VIVO ----------
+  /** 🟢 Obtiene saldos actuales de todos los agentes */
   getSaldiAgenti(): Observable<AgenteSaldo[]> {
-    // GET /api/analisi/saldi-agenti
-    return this.http.get<AgenteSaldo[]>(`${this.base}/analisi/saldi-agenti`);
+    return this.http.get<AgenteSaldo[]>(`${this.baseUrl}/analisi/saldi`);
   }
 
-  // ---------- TABLA: AGENTES ACTIVOS A LA FECHA ----------
-  getAgentiAttiviAlla(allaData: string): Observable<AgentiAttiviAllaResponse> {
-    // GET /api/analisi/agenti-attivi?allaData=YYYY-MM-DD
-    return this.http.get<AgentiAttiviAllaResponse>(
-      `${this.base}/analisi/agenti-attivi`,
-      { params: { allaData } }
+  /** 🟢 Obtiene agentes activos a una fecha */
+  getAgentiAttiviAlla(data: string): Observable<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }> {
+    return this.http.get<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }>(
+      `${this.baseUrl}/analisi/agenti-attivi?data=${encodeURIComponent(data)}`
     );
   }
 
-  // Si en tu backend el nombre era distinto (por ejemplo /analisi/agentiAttiviAllaData),
-  // puedes dejar este wrapper con el nombre que espera el componente:
-  // getAgentiAttiviAlla(allaData: string): Observable<AgentiAttiviAllaResponse> {
-  //   return this.http.get<AgentiAttiviAllaResponse>(
-  //     `${this.base}/analisi/agentiAttiviAllaData`,
-  //     { params: { allaData } }
-  //   );
-  // }
-
-  // ---------- SUGERIR FECHA VÁLIDA ----------
+  /** 🟢 Sugiere una fecha de compra dada la cantidad de agentes */
   suggestData(codiceTitolo: string, numAgenti: number): Observable<SuggestimentoData> {
-    // GET /api/analisi/suggest-data?codiceTitolo=...&numAgenti=1
     return this.http.get<SuggestimentoData>(
-      `${this.base}/analisi/suggest-data`,
-      { params: { codiceTitolo, numAgenti } }
+      `${this.baseUrl}/analisi/suggerimento-data?codiceTitolo=${encodeURIComponent(codiceTitolo)}&numAgenti=${numAgenti}`
     );
   }
 
-  // ---------- RESET SALDOS (para testing) ----------
+  /** 🟢 Previsualiza la compra antes de confirmar */
+  preview(req: PreviewRequest): Observable<PreviewResponse> {
+    return this.http.post<PreviewResponse>(`${this.baseUrl}/acquisto/preview`, req);
+  }
+
+  /** 🟢 Confirma la compra */
+  conferma(req: ConfermaRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/acquisto/conferma`, req);
+  }
+
+  /** 🟢 Reinicia los saldos para testing */
   resetSaldi(): Observable<void> {
-    // POST /api/analisi/reset-saldi
-    return this.http.post<void>(`${this.base}/analisi/reset-saldi`, {});
+    return this.http.post<void>(`${this.baseUrl}/analisi/reset-saldi`, {});
   }
 }
