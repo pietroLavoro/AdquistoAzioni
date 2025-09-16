@@ -1,16 +1,13 @@
-<h2>Compras registradas</h2>
-
+<h1>Compras registradas</h1>
 <button (click)="nuovo()">Nueva compra</button>
 
-<table>
+<p *ngIf="loading">Cargando...</p>
+<p *ngIf="!loading && error" style="color:red">Error: {{ error }}</p>
+<p *ngIf="!loading && !error && items.length === 0">No hay compras aún.</p>
+
+<table *ngIf="!loading && !error && items.length">
   <thead>
-    <tr>
-      <th>ID</th>
-      <th>Título</th>
-      <th>Fecha</th>
-      <th>Cantidad</th>
-      <th>Importe</th>
-    </tr>
+    <tr><th>ID</th><th>Título</th><th>Fecha</th><th>Cantidad</th><th>Importe</th></tr>
   </thead>
   <tbody>
     <tr *ngFor="let it of items">

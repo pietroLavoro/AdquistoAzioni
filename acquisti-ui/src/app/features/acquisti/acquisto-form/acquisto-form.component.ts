@@ -157,13 +157,21 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   // Botón para testing: reinicia saldos y refresca
   // en src/app/features/acquisti/acquisto-form/acquisto-form.component.ts
   resetSaldos(): void {
-    this.api.resetSaldi().subscribe({
-      next: () => this.verSaldosLiveOnce(), // refresca la tabla de saldos
-      error: () => {
-        this.error = 'ERROR';
-      },
-    });
-  }
+  this.error = undefined;
+
+  this.api.resetSaldos().subscribe({
+    next: () => {
+      // vuelve a pintar ambos paneles
+      this.verAgentesActivos();
+      this.verSaldosLiveOnce();
+    },
+    error: (err) => {
+      this.error = err?.error?.code ?? 'ERROR';
+    }
+  });
+}
+
+
 
   // ------------------------------
   // Helpers

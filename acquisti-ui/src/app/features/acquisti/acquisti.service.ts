@@ -6,14 +6,13 @@ import { Observable } from 'rxjs';
 // ya que están DEFINIDAS en este mismo archivo.
 // La línea problemática ha sido eliminada.
 
-
 /** --- DTOs compartidos --- */
 
 export interface Summary {
   id: number;
   titoloCodice: string;
   titoloDescrizione: string;
-  dataCompra: string;      // yyyy-MM-dd
+  dataCompra: string; // yyyy-MM-dd
   quantitaTotale: number;
   importoTotale: number;
 }
@@ -25,12 +24,12 @@ export interface AgenteSaldo {
 }
 
 export interface SuggestimentoData {
-  dataSuggerita: string; // formato 'yyyy-MM-dd'
+  dataSuggerita: string; // con doble “g”
 }
 
 export interface PreviewRequest {
   titoloCodice: string;
-  dataCompra: string;       // 'yyyy-MM-dd'
+  dataCompra: string; // 'yyyy-MM-dd'
   importoTotale: number;
   quantitaTotale: number;
 }
@@ -51,16 +50,15 @@ export interface PreviewResponse {
 export interface ConfermaRequest extends PreviewRequest {} // misma forma por ahora
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AcquistiService {
-  private baseUrl = '/api/acquisti';
+  private baseUrl = '/api';
 
   constructor(private http: HttpClient) {}
 
   list(): Observable<Summary[]> {
-    // backend: GET /api/acquisti  -> Summary[]
-    return this.http.get<Summary[]>(this.baseUrl);
+    return this.http.get<Summary[]>(`${this.baseUrl}/acquisti`);
   }
 
   /** 🟢 Obtiene saldos actuales de todos los agentes */
@@ -69,7 +67,9 @@ export class AcquistiService {
   }
 
   /** 🟢 Obtiene agentes activos a una fecha */
-  getAgentiAttiviAlla(data: string): Observable<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }> {
+  getAgentiAttiviAlla(
+    data: string
+  ): Observable<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }> {
     return this.http.get<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }>(
       `${this.baseUrl}/analisi/agenti-attivi?data=${encodeURIComponent(data)}`
     );
@@ -78,7 +78,9 @@ export class AcquistiService {
   /** 🟢 Sugiere una fecha de compra dada la cantidad de agentes */
   suggestData(codiceTitolo: string, numAgenti: number): Observable<SuggestimentoData> {
     return this.http.get<SuggestimentoData>(
-      `${this.baseUrl}/analisi/suggerimento-data?codiceTitolo=${encodeURIComponent(codiceTitolo)}&numAgenti=${numAgenti}`
+      `${this.baseUrl}/analisi/suggerimento-data?codiceTitolo=${encodeURIComponent(
+        codiceTitolo
+      )}&numAgenti=${numAgenti}`
     );
   }
 
@@ -93,10 +95,8 @@ export class AcquistiService {
   }
 
   /** 🟢 Reinicia los saldos para testing */
-  resetSaldi(): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/analisi/reset-saldi`, {});
-  }
-
-
+  resetSaldos(): Observable<void> {
+  return this.http.post<void>(`${this.baseUrl}/acquisti/analisi/reset-saldi`, {});
 }
 
+}
