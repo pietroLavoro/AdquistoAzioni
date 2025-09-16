@@ -2,6 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+// NO SE NECESITA IMPORTAR AcquistiService o las interfaces aquí,
+// ya que están DEFINIDAS en este mismo archivo.
+// La línea problemática ha sido eliminada.
+
+
 /** --- DTOs compartidos --- */
 export interface AgenteSaldo {
   id: number;
@@ -15,7 +20,7 @@ export interface SuggestimentoData {
 
 export interface PreviewRequest {
   titoloCodice: string;
-  dataCompra: string;      // 'yyyy-MM-dd'
+  dataCompra: string;       // 'yyyy-MM-dd'
   importoTotale: number;
   quantitaTotale: number;
 }

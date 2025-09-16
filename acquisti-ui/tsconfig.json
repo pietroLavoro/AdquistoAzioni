@@ -13,10 +13,9 @@
     "target": "ES2022",
     "module": "preserve",
 
-    /* 👇 IMPORTANTE: alias */
-    "baseUrl": "./src",
-    "paths": {
-      "@app/*": ["app/*"]
+    "baseUrl": ".",                     // <-- AÑADE ESTO
+    "paths": {                          // <-- Y ESTO
+      "@app/*": ["src/app/*"]
     }
   },
   "angularCompilerOptions": {
