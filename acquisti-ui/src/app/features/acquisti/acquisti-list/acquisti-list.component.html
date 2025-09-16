@@ -2,9 +2,7 @@
 
 <button (click)="nuovo()">Nueva compra</button>
 
-<div *ngIf="loading">Cargando...</div>
-
-<table *ngIf="!loading && items.length" border="1" cellpadding="4" cellspacing="0" style="margin-top:1rem">
+<table>
   <thead>
     <tr>
       <th>ID</th>
@@ -25,4 +23,4 @@
   </tbody>
 </table>
 
-<p *ngIf="!loading && !items.length">No hay compras.</p>
+<p *ngIf="error" style="color:red">Error: {{ error }}</p>

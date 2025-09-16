@@ -1,15 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
-
-import {
-  AcquistiService,
-  AgenteSaldo,
-  // SuggestimentoData, // Solo importa si los usas
-  // PreviewRequest,   // Solo importa si los usas
-  // PreviewResponse   // Solo importa si los usas
-} from '../../acquisti/acquisti.service'; // RUTA FINAL Y CORRECTA PARA ESTE COMPONENTE
+import { AcquistiService, Summary } from '../../acquisti/acquisti.service'; // <-- usa Summary (no AgenteSaldo)
 
 @Component({
   selector: 'app-acquisti-list',
@@ -19,24 +11,22 @@ import {
   styleUrls: ['./acquisti-list.css']
 })
 export class AcquistiListComponent implements OnInit {
-  items: AgenteSaldo[] = []; // Mejor tipado
+  items: Summary[] = [];      // <-- OJO: Summary, no AgenteSaldo
   loading = false;
   error?: string;
 
   constructor(private api: AcquistiService, private router: Router) {}
 
   ngOnInit(): void {
-    this.loading = true;
-    this.api.getSaldiAgenti().subscribe({
-      next: (res: AgenteSaldo[]) => {
-        this.items = res;
-        this.loading = false;
-      },
-      error: (err: HttpErrorResponse) => {
-        console.error('Error al obtener saldos:', err);
-        this.error = `Error: ${err.statusText || 'Ocurrió un error desconocido'}`;
-        this.loading = false;
-      }
-    });
+    this.api.list().subscribe({
+  next: (res: Summary[]) => { this.items = res; this.loading = false; },
+  error: () => { this.error = 'ERROR'; this.loading = false; }
+});
+
+  }
+
+  // <-- método que pide el template
+  nuovo(): void {
+    this.router.navigateByUrl('/acquisti/nuovo');
   }
 }

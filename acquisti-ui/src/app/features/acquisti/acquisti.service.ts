@@ -8,6 +8,16 @@ import { Observable } from 'rxjs';
 
 
 /** --- DTOs compartidos --- */
+
+export interface Summary {
+  id: number;
+  titoloCodice: string;
+  titoloDescrizione: string;
+  dataCompra: string;      // yyyy-MM-dd
+  quantitaTotale: number;
+  importoTotale: number;
+}
+
 export interface AgenteSaldo {
   id: number;
   codiceFiscale: string;
@@ -44,9 +54,14 @@ export interface ConfermaRequest extends PreviewRequest {} // misma forma por ah
   providedIn: 'root'
 })
 export class AcquistiService {
-  private readonly baseUrl = '/api'; // <-- adapta si usas otro prefijo
+  private baseUrl = '/api/acquisti';
 
   constructor(private http: HttpClient) {}
+
+  list(): Observable<Summary[]> {
+    // backend: GET /api/acquisti  -> Summary[]
+    return this.http.get<Summary[]>(this.baseUrl);
+  }
 
   /** 🟢 Obtiene saldos actuales de todos los agentes */
   getSaldiAgenti(): Observable<AgenteSaldo[]> {
@@ -81,4 +96,7 @@ export class AcquistiService {
   resetSaldi(): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/analisi/reset-saldi`, {});
   }
+
+
 }
+

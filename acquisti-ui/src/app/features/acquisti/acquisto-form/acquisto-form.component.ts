@@ -1,10 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  Validators,
-} from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
 import { startWith, switchMap } from 'rxjs/operators';
@@ -43,9 +39,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   // --- formulario fuertemente tipado y non-nullable ---
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
-    dataCompra:   ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
-    importoTotale:[10000, [Validators.required, Validators.min(0.01)]],
-    quantitaTotale:[1, [Validators.required, Validators.min(1)]],
+    dataCompra: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
+    importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
+    quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
   constructor(private api: AcquistiService) {}
@@ -146,13 +142,25 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
+  verSaldosLiveOnce(): void {
+  this.api.getSaldiAgenti().subscribe({
+    next: (res: AgenteSaldo[]) => {
+      this.saldiLive = res;
+    },
+    error: () => {
+      this.error = 'ERROR';
+    }
+  });
+}
+
+
   // Botón para testing: reinicia saldos y refresca
-  doResetSaldi(): void {
-    this.error = undefined;
+  // en src/app/features/acquisti/acquisto-form/acquisto-form.component.ts
+  resetSaldos(): void {
     this.api.resetSaldi().subscribe({
-      next: () => this.refreshSaldiLiveOnce(),
-      error: (err: HttpErrorResponse) => {
-        this.error = err.error?.code ?? 'ERROR';
+      next: () => this.verSaldosLiveOnce(), // refresca la tabla de saldos
+      error: () => {
+        this.error = 'ERROR';
       },
     });
   }
@@ -181,12 +189,15 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       quantitaTotale: qta,
     };
     return req;
-    }
+  }
 
   private startPollingLive(): void {
     this.polling?.unsubscribe();
     this.polling = interval(this.pollingMs)
-      .pipe(startWith(0), switchMap(() => this.api.getSaldiAgenti()))
+      .pipe(
+        startWith(0),
+        switchMap(() => this.api.getSaldiAgenti())
+      )
       .subscribe({
         next: (res: AgenteSaldo[]) => (this.saldiLive = res),
         error: (err: HttpErrorResponse) => {
