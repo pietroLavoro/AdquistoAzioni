@@ -1,4 +1,16 @@
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
+  <!-- Toast -->
+  <div
+    class="toast"
+    [class.show]="toastVisible"
+    [class.toast--success]="toastType === 'success'"
+    [class.toast--info]="toastType === 'info'"
+    [class.toast--error]="toastType === 'error'"
+  >
+    {{ toastMsg }}
+    <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
+  </div>
+
   <!-- Columna izquierda: formulario -->
   <div>
     <form
@@ -32,13 +44,72 @@
 
       <div style="display: flex; gap: 0.5rem">
         <button type="submit">Previsualizar</button>
-        <button type="button" (click)="sugerirFecha()">Sugerir fecha</button>
+        <button
+          type="button"
+          (click)="onSuggerisciData()"
+          [disabled]="loading || !form.get('titoloCodice')?.value"
+        >
+          Sugerir fecha
+        </button>
+        <span *ngIf="numAgentiAttivi === 0" style="margin-left: 8px; color: #c00">
+          (sin agentes activos)
+        </span>
+
         <button type="button" (click)="verAgentesActivos()">Ver agentes activos</button>
-        
       </div>
 
       <p *ngIf="error" style="color: red">Error: {{ error }}</p>
     </form>
+
+    <!-- ================= PREVIEW (mostrar después de “Previsualizar”) ================= -->
+    <div *ngIf="preview" style="margin-top: 16px; padding: 12px; border: 1px solid #999">
+      <h3>Previsualización</h3>
+
+      <p>
+        <strong>Título:</strong> {{ preview!.titoloCodice }}
+        &nbsp; | &nbsp;
+        <strong>Fecha:</strong> {{ preview!.dataCompra }}
+        &nbsp; | &nbsp;
+        <strong>Importe total:</strong> {{ preview!.importoTotale | number : '1.2-2' }}
+        &nbsp; | &nbsp;
+        <strong>Cantidad total:</strong> {{ preview!.quantitaTotale }}
+      </p>
+
+      <table border="1" cellpadding="6" style="margin-top: 8px; width: 100%; max-width: 680px">
+        <thead>
+          <tr>
+            <th style="text-align: left">Agente ID</th>
+            <th style="text-align: left">CF</th>
+            <th style="text-align: right">Importe asignado</th>
+            <th style="text-align: right">Cantidad asignada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of preview!.riparto">
+            <td>{{ r.agenteId }}</td>
+            <td>{{ r.codiceFiscale }}</td>
+            <td style="text-align: right">{{ r.importoAgente | number : '1.2-2' }}</td>
+            <td style="text-align: right">{{ r.quantitaAgente }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 12px">
+        <button type="button" (click)="confirmarDesdePreview()" [disabled]="loading">
+          {{ loading ? 'Confirmando…' : 'Confirmar compra' }}
+        </button>
+
+        <button
+          type="button"
+          (click)="cancelarPreview()"
+          [disabled]="loading"
+          style="margin-left: 8px"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+    <!-- ================= /PREVIEW ================= -->
 
     <!-- si ya tenías preview, aquí lo presentas como antes -->
   </div>

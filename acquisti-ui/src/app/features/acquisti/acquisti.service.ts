@@ -1,10 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-
-// NO SE NECESITA IMPORTAR AcquistiService o las interfaces aquí,
-// ya que están DEFINIDAS en este mismo archivo.
-// La línea problemática ha sido eliminada.
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { HttpParams } from '@angular/common/http';
 
 /** --- DTOs compartidos --- */
 
@@ -58,7 +56,13 @@ export class AcquistiService {
   constructor(private http: HttpClient) {}
 
   list(): Observable<Summary[]> {
-    return this.http.get<Summary[]>(`${this.baseUrl}/acquisti`);
+    return this.http.get<Summary[]>(`${this.baseUrl}/acquisto`).pipe(
+      catchError((err: HttpErrorResponse) => {
+        // Un solo mensaje claro
+        const msg = err.error?.message || err.statusText || 'Fallo al cargar compras';
+        return throwError(() => new Error(`${err.status || 0} ${msg}`.trim()));
+      })
+    );
   }
 
   /** 🟢 Obtiene saldos actuales de todos los agentes */
@@ -77,11 +81,11 @@ export class AcquistiService {
 
   /** 🟢 Sugiere una fecha de compra dada la cantidad de agentes */
   suggestData(codiceTitolo: string, numAgenti: number): Observable<SuggestimentoData> {
-    return this.http.get<SuggestimentoData>(
-      `${this.baseUrl}/analisi/suggerimento-data?codiceTitolo=${encodeURIComponent(
-        codiceTitolo
-      )}&numAgenti=${numAgenti}`
-    );
+    const params = new HttpParams()
+      .set('codiceTitolo', codiceTitolo)
+      .set('numAgenti', String(numAgenti)); // debe ser >= 1
+
+    return this.http.get<SuggestimentoData>(`${this.baseUrl}/analisi/suggerisci-data`, { params });
   }
 
   /** 🟢 Previsualiza la compra antes de confirmar */
@@ -96,7 +100,6 @@ export class AcquistiService {
 
   /** 🟢 Reinicia los saldos para testing */
   resetSaldos(): Observable<void> {
-  return this.http.post<void>(`${this.baseUrl}/acquisti/analisi/reset-saldi`, {});
-}
-
+    return this.http.post<void>(`${this.baseUrl}/analisi/reset`, {});
+  }
 }

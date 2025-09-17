@@ -20,8 +20,14 @@ export class AcquistiListComponent implements OnInit {
   ngOnInit(): void {
     this.loading = true;
     this.api.list().subscribe({
-      next: (res: Summary[]) => { this.items = res; this.loading = false; },
-      error: () => { this.error = 'ERROR'; this.loading = false; }
+      next: (res: Summary[]) => {
+        this.items = res;
+        this.loading = false;
+      },
+      error: (e: Error) => {
+        this.error = e.message || 'Error desconocido';
+        this.loading = false;
+      },
     });
   }
 

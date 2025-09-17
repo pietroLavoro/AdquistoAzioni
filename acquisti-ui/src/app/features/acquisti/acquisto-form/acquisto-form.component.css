@@ -1,0 +1,30 @@
+/* Toast base */
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  z-index: 9999;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+.toast--success { background: #12845f; }
+.toast--info    { background: #2f66c5; }
+.toast--error   { background: #c1272d; }
+
+/* Botón cerrar */
+.toast__close {
+  margin-left: 12px;
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
