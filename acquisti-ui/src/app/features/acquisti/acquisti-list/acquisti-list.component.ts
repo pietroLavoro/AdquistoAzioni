@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AcquistiService, Summary } from '../acquisti.service';
@@ -11,6 +11,8 @@ import { AcquistiService, Summary } from '../acquisti.service';
   styleUrls: ['./acquisti-list.css'],
 })
 export class AcquistiListComponent implements OnInit {
+  @Input() embedded = false; // ← modo incrustado
+
   items: Summary[] = [];
   loading = false;
   error?: string;
@@ -18,20 +20,27 @@ export class AcquistiListComponent implements OnInit {
   constructor(private api: AcquistiService, private router: Router) {}
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  // ← público para que el padre pueda refrescar
+  load(): void {
     this.loading = true;
+    this.error = undefined;
     this.api.list().subscribe({
-      next: (res: Summary[]) => {
+      next: (res) => {
         this.items = res;
         this.loading = false;
       },
-      error: (e: Error) => {
-        this.error = e.message || 'Error desconocido';
+      error: () => {
+        this.error = 'ERROR';
         this.loading = false;
       },
     });
   }
 
   nuovo(): void {
+    if (this.embedded) return; // en modo incrustado no navegamos
     this.router.navigateByUrl('/acquisti/nuovo');
   }
 }

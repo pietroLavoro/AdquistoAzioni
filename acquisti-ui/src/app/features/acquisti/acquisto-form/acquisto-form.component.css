@@ -28,3 +28,27 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
+.col { min-width: 0; }
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.badge--ok   { background: #12845f; }  /* verde */
+.badge--warn { background: #b45309; }  /* naranja */
+.badge--neg  { background: #c1272d; }  /* rojo   */

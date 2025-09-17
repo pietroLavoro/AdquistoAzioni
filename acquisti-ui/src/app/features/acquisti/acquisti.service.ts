@@ -3,6 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { HttpParams } from '@angular/common/http';
+import { switchMap } from 'rxjs/operators';
 
 /** --- DTOs compartidos --- */
 
@@ -82,9 +83,8 @@ export class AcquistiService {
   /** 🟢 Sugiere una fecha de compra dada la cantidad de agentes */
   suggestData(codiceTitolo: string, numAgenti: number): Observable<SuggestimentoData> {
     const params = new HttpParams()
-      .set('codiceTitolo', codiceTitolo)
-      .set('numAgenti', String(numAgenti)); // debe ser >= 1
-
+      .set('codiceTitolo', (codiceTitolo || '').trim())
+      .set('numAgenti', String(Math.max(1, numAgenti)));
     return this.http.get<SuggestimentoData>(`${this.baseUrl}/analisi/suggerisci-data`, { params });
   }
 

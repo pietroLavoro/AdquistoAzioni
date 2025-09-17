@@ -1,67 +1,69 @@
+<!-- acquisito-form.component.html (versión unificada) -->
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
-  <!-- Toast -->
-  <div
-    class="toast"
-    [class.show]="toastVisible"
-    [class.toast--success]="toastType === 'success'"
-    [class.toast--info]="toastType === 'info'"
-    [class.toast--error]="toastType === 'error'"
-  >
-    {{ toastMsg }}
-    <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
-  </div>
+  <!-- Columna izquierda: FORM -->
+  <section>
+    <form [formGroup]="form" novalidate>
+      <div
+        style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
+      >
+        <div>
+          <label for="titolo">Código Título</label><br />
+          <select id="titolo" formControlName="titoloCodice">
+            <option value="">-- Selecciona --</option>
+            <option *ngFor="let t of titoli" [value]="t.code">{{ t.label }}</option>
+          </select>
+        </div>
 
-  <!-- Columna izquierda: formulario -->
-  <div>
-    <form
-      [formGroup]="form"
-      (ngSubmit)="doPreview()"
-      style="display: grid; gap: 0.75rem; max-width: 480px"
-    >
-      <label
-        >Código Título
-        <select formControlName="titoloCodice">
-          <option value="ENEL2025">ENEL2025 - Obbligazione ENEL 2025</option>
-          <option value="ENI2024">ENI2024 - Obbligazione ENI 2024</option>
-          <!-- añade más si tienes -->
-        </select>
-      </label>
+        <!-- 👇 Badge de saldo total disponible -->
+        <span
+          class="badge"
+          [ngClass]="{
+            'badge--ok': badgeType === 'ok',
+            'badge--warn': badgeType === 'warn',
+            'badge--neg': badgeType === 'neg'
+          }"
+          title="Suma de saldos disponibles de los agentes"
+        >
+          Saldo total: {{ saldoTotaleDisponibile | number : '1.2-2' }}
+        </span>
+      </div>
 
-      <label
-        >Fecha (yyyy-MM-dd)
-        <input type="date" formControlName="dataCompra" />
-      </label>
+      <div style="margin-bottom: 8px">
+        <label for="data">Fecha (yyyy-MM-dd)</label><br />
+        <input id="data" type="date" formControlName="dataCompra" />
+      </div>
 
-      <label
-        >Importe total
-        <input type="number" formControlName="importoTotale" />
-      </label>
+      <div style="margin-bottom: 8px">
+        <label for="imp">Importe total</label><br />
+        <input id="imp" type="number" formControlName="importoTotale" />
+      </div>
 
-      <label
-        >Cantidad total
-        <input type="number" formControlName="quantitaTotale" />
-      </label>
+      <div style="margin-bottom: 8px">
+        <label for="qta">Cantidad total</label><br />
+        <input id="qta" type="number" formControlName="quantitaTotale" />
+      </div>
 
-      <div style="display: flex; gap: 0.5rem">
-        <button type="submit">Previsualizar</button>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
+        <button type="button" (click)="doPreview()" [disabled]="loading || form.invalid">
+          Previsualizar
+        </button>
+
         <button
           type="button"
           (click)="onSuggerisciData()"
-          [disabled]="loading || !form.get('titoloCodice')?.value"
+          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0"
         >
           Sugerir fecha
         </button>
-        <span *ngIf="numAgentiAttivi === 0" style="margin-left: 8px; color: #c00">
-          (sin agentes activos)
-        </span>
 
-        <button type="button" (click)="verAgentesActivos()">Ver agentes activos</button>
+        <!-- Muevo aquí el reset y elimino “Ver agentes activos” -->
+        <button type="button" (click)="resetSaldos()" [disabled]="loading">Reiniciar saldos</button>
       </div>
 
-      <p *ngIf="error" style="color: red">Error: {{ error }}</p>
+      <p *ngIf="error" style="color: #c00; margin-top: 8px">Error: {{ error }}</p>
     </form>
 
-    <!-- ================= PREVIEW (mostrar después de “Previsualizar”) ================= -->
+    <!-- PREVISUALIZACIÓN -->
     <div *ngIf="preview" style="margin-top: 16px; padding: 12px; border: 1px solid #999">
       <h3>Previsualización</h3>
 
@@ -98,7 +100,6 @@
         <button type="button" (click)="confirmarDesdePreview()" [disabled]="loading">
           {{ loading ? 'Confirmando…' : 'Confirmar compra' }}
         </button>
-
         <button
           type="button"
           (click)="cancelarPreview()"
@@ -109,77 +110,56 @@
         </button>
       </div>
     </div>
-    <!-- ================= /PREVIEW ================= -->
+    <!-- /PREVISUALIZACIÓN -->
+  </section>
 
-    <!-- si ya tenías preview, aquí lo presentas como antes -->
-  </div>
+  <!-- Columna derecha: SALDOS (único recuadro) -->
+  <section>
+    <div style="display: flex; align-items: baseline; gap: 12px">
+      <h3 style="margin: 0">Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}</h3>
+      <small *ngIf="isTodaySelected()" style="font-weight: normal; color: #555">
+        (actualiza cada 5s)
+      </small>
+      <span style="flex: 1 1 auto"></span>
+    </div>
 
-  <!-- Columna derecha: paneles de referencia -->
-  <div>
-    <h3>Agentes activos a la fecha</h3>
-    <p *ngIf="agentiInfo as ai">
-      Fecha: {{ ai.data }} — Activos: <b>{{ ai.numAgenti }}</b>
-    </p>
-    <table *ngIf="agentiInfo?.agenti?.length" border="1" cellpadding="3" cellspacing="0">
+    <table border="1" cellpadding="6" style="width: 420px; margin-top: 8px">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>CF</th>
-          <th>Saldo disp.</th>
+          <th style="text-align: left">ID</th>
+          <th style="text-align: left">CF</th>
+          <th style="text-align: right">Saldo disp.</th>
         </tr>
       </thead>
       <tbody>
-        <!-- tabla agentes activos a la fecha -->
-        <tr *ngFor="let a of agentiInfo?.agenti">
-          <td>{{ a.id }}</td>
-          <td>{{ a.codiceFiscale }}</td>
-          <td>{{ a.saldoDisponibile | number : '1.2-2' }}</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3 style="margin-top: 2rem">Saldos en tiempo real (todos)</h3>
-    <small>Actualiza cada {{ pollingMs / 1000 }}s</small>
-    <table border="1" cellpadding="3" cellspacing="0" style="margin-top: 0.5rem">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>CF</th>
-          <th>Saldo disp.</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let a of saldiLive">
-          <td>{{ a.id }}</td>
-          <td>{{ a.codiceFiscale }}</td>
-          <td [style.color]="a.saldoDisponibile >= 0 ? 'inherit' : 'crimson'">
-            {{ a.saldoDisponibile | number : '1.2-2' }}
+        <tr *ngFor="let r of rows">
+          <td>{{ r.id }}</td>
+          <td>{{ r.codiceFiscale }}</td>
+          <td [style.text-align]="'right'" [style.color]="r.saldoDisponibile < 0 ? '#c00' : '#000'">
+            {{ r.saldoDisponibile | number : '1.2-2' }}
           </td>
         </tr>
+        <tr *ngIf="!rows?.length">
+          <td colspan="3" style="text-align: center; color: #666">Sin datos</td>
+        </tr>
       </tbody>
     </table>
-  </div>
+  </section>
 </div>
 
-<!-- Panel derecho: saldos en tiempo real -->
-<section>
-  <h3>Agentes (saldos en vivo)</h3>
-  <button type="button" (click)="resetSaldos()">Reiniciar saldos (testing)</button>
-  <table *ngIf="saldiLive?.length">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>CF</th>
-        <th>Saldo disp.</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- tabla saldos en vivo -->
-      <tr *ngFor="let a of saldiLive">
-        <td>{{ a.id }}</td>
-        <td>{{ a.codiceFiscale }}</td>
-        <td>{{ a.saldoDisponibile | number : '1.2-2' }}</td>
-      </tr>
-    </tbody>
-  </table>
+<!-- Compras registradas (incrustado) -->
+<section style="margin-top: 16px">
+  <app-acquisti-list [embedded]="true"></app-acquisti-list>
 </section>
+
+<!-- Toast -->
+<div
+  class="toast"
+  [class.show]="toastVisible"
+  [class.toast--success]="toastType === 'success'"
+  [class.toast--info]="toastType === 'info'"
+  [class.toast--error]="toastType === 'error'"
+>
+  {{ toastMsg }}
+  <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
+</div>
