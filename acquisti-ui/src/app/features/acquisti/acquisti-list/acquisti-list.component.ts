@@ -1,14 +1,15 @@
 import { Component, Input, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { AcquistiService, Summary } from '../acquisti.service';
 
+
 @Component({
   selector: 'app-acquisti-list',
-  standalone: true,
-  imports: [CommonModule],
+  standalone: true,                 // ✅ IMPORTANTE
+  imports: [CommonModule, DecimalPipe],
   templateUrl: './acquisti-list.component.html',
-  styleUrls: ['./acquisti-list.css'],
+  styleUrls: ['./acquisti-list.component.css'],
 })
 export class AcquistiListComponent implements OnInit {
   @Input() embedded = false; // ← modo incrustado

@@ -1,12 +1,21 @@
-import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { interval, Subscription } from 'rxjs';
-import { startWith, switchMap, finalize } from 'rxjs/operators';
 
-// Subcomponente de lista (compras registradas)
-import { AcquistiListComponent } from '../acquisti-list/acquisti-list.component';
+// PrimeNG (módulos básicos de UI que seguramente usarás)
+import { ButtonModule } from 'primeng/button';
+import { DropdownModule } from 'primeng/dropdown';
+import { CalendarModule } from 'primeng/calendar';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
+
+import { interval, Subscription } from 'rxjs';
+import { finalize, startWith, switchMap } from 'rxjs/operators';
 
 // Servicio + DTOs
 import {
@@ -15,13 +24,38 @@ import {
   SuggestimentoData,
   PreviewRequest,
   PreviewResponse,
-  Titolo,
-} from '../../acquisti/acquisti.service';
+  Titolo, // si lo exportas desde el service
+} from '../../acquisti.service';
+
+// Tu lista de compras, **standalone** (ver punto 1)
+import { AcquistiListComponent } from '../../acquisti-list/acquisti-list.component';
 
 @Component({
   selector: 'app-acquisto-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DecimalPipe, AcquistiListComponent],
+  imports: [
+    // Angular
+    CommonModule,
+    ReactiveFormsModule,
+    DecimalPipe,
+
+    // PrimeNG (usa lo que realmente necesites)
+    ButtonModule,
+    DropdownModule,
+    CalendarModule,
+    InputNumberModule,
+    TableModule,
+    TagModule,
+    ToastModule,
+    ConfirmDialogModule,
+
+    // Tus componentes standalone
+    AcquistiListComponent,
+  ],
+  providers: [
+    MessageService, // para <p-toast>
+    ConfirmationService, // para <p-confirmDialog>
+  ],
   templateUrl: './acquisto-form.component.html',
   styleUrls: ['./acquisto-form.component.css'],
 })
@@ -32,8 +66,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
 
-  loading = false;                // bloquea botones mientras hay request en curso
-  error: string | null = null;    // mensaje de error visible en la UI
+  loading = false; // bloquea botones mientras hay request en curso
+  error: string | null = null; // mensaje de error visible en la UI
 
   // -------------------- combos / datos maestros --------------------
   titoli: Titolo[] = [];
@@ -338,14 +372,20 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     const imp = Number(v.importoTotale);
     const qta = Number(v.quantitaTotale);
 
-    if (!titolo || !dataIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) || !isFinite(imp) || !isFinite(qta)) {
+    if (
+      !titolo ||
+      !dataIso ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) ||
+      !isFinite(imp) ||
+      !isFinite(qta)
+    ) {
       this.error = !dataIso ? 'Fecha inválida.' : 'Formulario inválido';
       return null;
     }
 
     const req: PreviewRequest = {
       titoloCodice: titolo,
-      dataCompra: dataIso,     // tu backend espera ISO en JSON
+      dataCompra: dataIso, // tu backend espera ISO en JSON
       importoTotale: imp,
       quantitaTotale: qta,
     };
@@ -359,7 +399,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (!this.isTodaySelected()) return; // solo hay polling si es HOY
 
     this.polling = interval(this.pollingMs)
-      .pipe(startWith(0), switchMap(() => this.api.getSaldiAgenti()))
+      .pipe(
+        startWith(0),
+        switchMap(() => this.api.getSaldiAgenti())
+      )
       .subscribe({
         next: (res) => (this.rows = res),
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
@@ -384,12 +427,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (err?.error) {
       const e = err.error as any;
       const msg =
-        (typeof e === 'string' && e.trim()) ||
-        e?.message ||
-        e?.code ||
-        e?.detail ||
-        e?.error ||
-        '';
+        (typeof e === 'string' && e.trim()) || e?.message || e?.code || e?.detail || e?.error || '';
       if (msg) {
         emit(msg);
         return;

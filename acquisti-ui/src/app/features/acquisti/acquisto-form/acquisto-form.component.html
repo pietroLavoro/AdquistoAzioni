@@ -165,3 +165,28 @@
   {{ toastMsg }}
   <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
 </div>
+
+<!-- ejemplo con PrimeNG -->
+<p-dropdown
+  [options]="titoli"
+  optionLabel="descrizione"
+  optionValue="codice"
+  formControlName="titoloCodice"
+  placeholder="Seleccione título">
+</p-dropdown>
+
+<p-calendar
+  formControlName="dataCompra"
+  dateFormat="yy-mm-dd"
+  [showIcon]="true">
+</p-calendar>
+
+<p-inputNumber
+  formControlName="importoTotale"
+  mode="currency"
+  currency="EUR">
+</p-inputNumber>
+
+<p-button label="Previsualizar" (onClick)="doPreview()" [loading]="loading"></p-button>
+<p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
