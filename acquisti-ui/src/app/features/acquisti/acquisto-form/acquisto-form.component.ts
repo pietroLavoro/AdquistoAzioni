@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
-import { startWith, switchMap, take, finalize } from 'rxjs/operators';
-import { inject } from '@angular/core';
-import { ViewChild } from '@angular/core';
+import { startWith, switchMap, finalize } from 'rxjs/operators';
+
+// Subcomponente de lista (compras registradas)
 import { AcquistiListComponent } from '../acquisti-list/acquisti-list.component';
 
 // Servicio + DTOs
@@ -15,6 +15,7 @@ import {
   SuggestimentoData,
   PreviewRequest,
   PreviewResponse,
+  Titolo,
 } from '../../acquisti/acquisti.service';
 
 @Component({
@@ -25,69 +26,71 @@ import {
   styleUrls: ['./acquisto-form.component.css'],
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
-  titoli = [
-    { code: 'ENEL2025', label: 'ENEL2025 - Obligazione ENEL 2025' },
-    { code: 'ENEL2030', label: 'ENEL2030 - Obligazione ENEL 2030' }, // ← el que faltaba
-  ];
+  // -------------------- estado base --------------------
+  private fb = inject(FormBuilder);
+  constructor(private api: AcquistiService) {}
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
-  // ===== Estado base =====
-  private fb = inject(FormBuilder);
-  loading = false; // bloquea botones mientras hay request en curso
-  error?: string; // mensaje de error mostrado en pantalla
 
-  // ===== Panel “saldos en vivo” =====
-  saldiLive: AgenteSaldo[] = [];
+  loading = false;                // bloquea botones mientras hay request en curso
+  error: string | null = null;    // mensaje de error visible en la UI
+
+  // -------------------- combos / datos maestros --------------------
+  titoli: Titolo[] = [];
+
+  // -------------------- panel unificado de saldos --------------------
+  /** Filas que muestra la tabla unificada (en vivo si es HOY; “a la fecha” si no) */
+  rows: AgenteSaldo[] = [];
+
+  /** Polling de saldos en vivo (solo si la fecha seleccionada es HOY) */
   polling?: Subscription;
-  pollingMs = 5000; // refresco cada 5s
+  pollingMs = 5000;
 
-  // ===== Agentes activos a la fecha =====
+  // -------------------- “agentes activos a la fecha” (para badge y sugerencia) --------------------
   agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
-  numAgentiAttivi = 0; // usado por el template para avisar “sin agentes activos”
+  numAgentiAttivi = 0;
 
-  // ===== Formulario (fecha en ISO: yyyy-MM-dd) =====
+  // -------------------- formulario (FECHA en **ISO yyyy-MM-dd**) --------------------
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
-    dataCompra: ['', [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
+    dataCompra: [this.todayIso(), [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
     importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
     quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
-  // ===== Preview en pantalla =====
+  // -------------------- bloque de previsualización --------------------
   preview: PreviewResponse | null = null;
 
-  // ===== Toast (notificaciones simple) =====
+  // -------------------- mini-toast básico --------------------
   toastMsg = '';
   toastType: 'success' | 'info' | 'error' = 'info';
   toastVisible = false;
   private toastTimer?: any;
 
-  constructor(private api: AcquistiService) {}
-  rows: AgenteSaldo[] = [];
-
-  // ================= Ciclo de vida =================
-
-  isTodaySelected(): boolean {
-    const d = (this.form.get('dataCompra')?.value || '').trim();
-    return !!d && d === this.todayStr();
-  }
-
+  // ======================================================
+  // ciclo de vida
+  // ======================================================
   ngOnInit(): void {
-    // ✅ Fecha hoy por defecto
-    if (!this.form.get('dataCompra')?.value) {
-      this.form.patchValue({ dataCompra: this.todayStr() });
-    }
-
+    // tabla unificada inicial (si hoy → en vivo; si no → a la fecha)
     this.refreshSaldosUnifiedOnce();
+
+    // activa polling solo si la fecha seleccionada es HOY
     this.startUnifiedPolling();
 
-    // refrescar al cambiar de fecha
-    this.form.get('dataCompra')?.valueChanges.subscribe(() => {
-      this.refreshSaldosUnifiedOnce();
-      this.startUnifiedPolling();
-    });
-
+    // agentes activos a la fecha (para badge + sugerir fecha)
     this.verAgentesActivos();
+
+    // cargar títulos y seleccionar el primero si no hay selección
+    this.api.getTitoli().subscribe({
+      next: (res) => {
+        this.titoli = res ?? [];
+        const cur = this.form.get('titoloCodice')!.value;
+        if (!cur && this.titoli.length > 0) {
+          this.form.patchValue({ titoloCodice: this.titoli[0].codice });
+        }
+      },
+      error: (err) => this.setHttpError(err, 'No se pudieron cargar los títulos'),
+    });
   }
 
   ngOnDestroy(): void {
@@ -95,15 +98,20 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.hideToast();
   }
 
-  // ================= Acciones de UI =================
+  // ======================================================
+  // acciones de UI
+  // ======================================================
 
-  /**
-   * Previsualiza (dry-run) y pinta la tabla de reparto en pantalla.
-   * Convierte la fecha a yyyyMMdd antes de enviar.
-   */
+  /** ¿la fecha del form es “hoy”? (para decidir si hay polling y qué mostrar) */
+  isTodaySelected(): boolean {
+    const d = (this.form.get('dataCompra')?.value || '').trim();
+    return !!d && d === this.todayIso();
+  }
+
+  /** Previsualiza la compra y muestra el bloque de reparto. */
   doPreview(): void {
-    this.error = undefined;
-    const req = this.buildRequest(); // convierte fecha a yyyyMMdd
+    this.error = null;
+    const req = this.buildRequest(); // construye payload (fecha ISO, numéricos validados)
     if (!req) return;
 
     this.loading = true;
@@ -112,7 +120,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
         next: (resp: PreviewResponse) => {
-          this.preview = resp; // muestra el bloque de previsualización
+          this.preview = resp;
           this.showToast('Previsualización OK', 'info');
         },
         error: (err: HttpErrorResponse) => {
@@ -123,12 +131,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Confirmación directa (fuera del preview). Mantengo por compatibilidad.
-   * Flujo recomendado: confirmar desde el bloque de preview.
-   */
+  /** Confirma la compra (flujo directo). Recomendado confirmar desde el bloque de preview. */
   doConferma(): void {
-    this.error = undefined;
+    this.error = null;
     const req = this.buildRequest();
     if (!req) return;
 
@@ -140,11 +145,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         next: () => {
           this.preview = null;
           this.showToast('Compra confirmada', 'success');
-          // 🔄 refrescos inmediatos de la UI
+          // refrescos inmediatos
           this.refreshSaldosUnifiedOnce();
           this.startUnifiedPolling();
           this.verAgentesActivos();
-          this.listCmp?.load(); // compras registradas
+          this.listCmp?.load(); // recarga “compras registradas”
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
@@ -153,22 +158,21 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Alias usado por el template (click)="onSuggerisciData()".
-   */
+  /** Click del botón “Sugerir fecha”. */
   onSuggerisciData(): void {
     this.sugerirFecha();
   }
 
   /**
    * Sugerir fecha:
-   * 1) Verifica título
-   * 2) Obtiene #agentes activos para la fecha actual del form (o “hoy”)
-   * 3) Llama a suggestData con n >= 1
-   * 4) Parchea la fecha del form y refresca agentes activos
+   * - valida título
+   * - usa #agentes activos (badge) para esa fecha
+   * - llama al backend (devuelve dd-MM-yyyy)
+   * - convierte a ISO yyyy-MM-dd para el `<input type="date">`
+   * - refresca agentes y la tabla unificada
    */
   sugerirFecha(): void {
-    this.error = undefined;
+    this.error = null;
 
     const titolo = (this.form.get('titoloCodice')?.value as string | undefined)?.trim();
     if (!titolo) {
@@ -176,50 +180,40 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const data =
-      (this.form.get('dataCompra')?.value as string | undefined)?.trim() || this.todayStr();
+    const n = this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
+    if (n <= 0) {
+      this.error = 'No hay agentes activos para sugerir una fecha.';
+      return;
+    }
 
     this.loading = true;
-    this.api
-      .getAgentiAttiviAlla(data)
-      .pipe(
-        take(1),
-        switchMap((res) => {
-          this.agentiInfo = res;
-          const n = res?.numAgenti ?? res?.agenti?.length ?? 0;
-          this.numAgentiAttivi = n;
-          if (n <= 0) throw new Error('No hay agentes activos para sugerir una fecha.');
-          return this.api.suggestData(titolo!, n);
-        }),
-        finalize(() => (this.loading = false))
-      )
-      .subscribe({
-        next: (sug: SuggestimentoData) => {
-          this.form.patchValue({ dataCompra: sug.dataSuggerita }); // ISO yyyy-MM-dd
-          this.verAgentesActivos(); // refresca tabla de agentes con la nueva fecha
-          this.showToast('Fecha sugerida aplicada', 'info');
-        },
-        error: (err: HttpErrorResponse | Error) => {
-          if (err instanceof HttpErrorResponse) {
-            this.setHttpError(err, 'Error al sugerir fecha');
-            this.showToast(this.error || 'Error al sugerir fecha', 'error', 4000);
-          } else {
-            this.error = err.message || 'Error al sugerir fecha';
-            this.showToast(this.error, 'error', 4000);
-          }
-        },
-      });
+    this.api.suggestData(titolo, n).subscribe({
+      next: (sug: SuggestimentoData) => {
+        // backend devuelve dd-MM-yyyy → convierto a ISO para el input type="date"
+        const iso = this.toIsoFromDmy(sug.dataSuggerita);
+        this.form.patchValue({ dataCompra: iso });
+
+        // refrescos
+        this.verAgentesActivos();
+        this.refreshSaldosUnifiedOnce();
+        this.startUnifiedPolling();
+
+        this.loading = false;
+      },
+      error: (err) => {
+        this.setHttpError(err, 'Error al sugerir fecha');
+        this.loading = false;
+      },
+    });
   }
 
-  /**
-   * Carga agentes activos en la fecha del form (si la hay).
-   */
+  /** Obtiene agentes activos a la fecha del formulario (ISO). */
   verAgentesActivos(): void {
-    this.error = undefined;
-    const data = (this.form.get('dataCompra')?.value as string | undefined)?.trim();
-    if (!data) return;
+    this.error = null;
+    const dataIso = ((this.form.get('dataCompra')?.value as string) || '').trim();
+    if (!dataIso) return;
 
-    this.api.getAgentiAttiviAlla(data).subscribe({
+    this.api.getAgentiAttiviAlla(dataIso).subscribe({
       next: (res) => {
         this.agentiInfo = res;
         this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
@@ -230,34 +224,18 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Carga única de saldos “en vivo”.
-   */
-  verSaldosLiveOnce(): void {
-    this.api.getSaldiAgenti().subscribe({
-      next: (res: AgenteSaldo[]) => {
-        this.saldiLive = res;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.setHttpError(err, 'No se pudieron obtener saldos');
-      },
-    });
-  }
-
-  /**
-   * Botón de testing: resetea saldos y refresca paneles.
-   */
+  /** Resetea los saldos de prueba y refresca ambos paneles + lista. */
   resetSaldos(): void {
-    this.error = undefined;
+    this.error = null;
     this.api.resetSaldos().subscribe({
       next: () => {
         this.showToast('Saldos reiniciados', 'success');
         this.preview = null;
-        // 🔄 refrescos
+
         this.refreshSaldosUnifiedOnce();
         this.startUnifiedPolling();
         this.verAgentesActivos();
-        this.listCmp?.load(); // ← limpia/recarga lista
+        this.listCmp?.load(); // limpia/recarga lista
       },
       error: (err) => {
         this.setHttpError(err, 'Error al reiniciar saldos');
@@ -266,9 +244,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Confirmación desde el bloque de previsualización.
-   */
+  /** Confirma desde el bloque de preview. */
   confirmarDesdePreview(): void {
     if (!this.preview) return;
     const req = this.buildRequest();
@@ -282,7 +258,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         next: () => {
           this.preview = null;
           this.showToast('Compra confirmada', 'success');
-          // 🔄 refrescos
           this.refreshSaldosUnifiedOnce();
           this.startUnifiedPolling();
           this.verAgentesActivos();
@@ -295,31 +270,36 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Cierra el bloque de previsualización sin confirmar.
-   */
+  /** Cierra el bloque de previsualización. */
   cancelarPreview(): void {
     this.preview = null;
   }
 
-  // ================= Helpers =================
+  // ======================================================
+  // helpers de datos y fechas
+  // ======================================================
+
+  /**
+   * Refresca la tabla unificada:
+   * - Si la fecha es HOY → llama saldos “en vivo”
+   * - Si la fecha NO es hoy → llama “agentes a la fecha”
+   */
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
 
-    // si no hay fecha, no hacemos nada
     if (!dateIso) {
       this.rows = [];
       return;
     }
 
     if (this.isTodaySelected()) {
-      // Modo EN VIVO
+      // en vivo
       this.api.getSaldiAgenti().subscribe({
         next: (res) => (this.rows = res),
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
     } else {
-      // Modo A LA FECHA
+      // a la fecha
       this.api.getAgentiAttiviAlla(dateIso).subscribe({
         next: (res) => {
           this.agentiInfo = res;
@@ -331,99 +311,14 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Construye el payload para preview/conferma:
-   * - Toma fecha en ISO (yyyy-MM-dd) del form y la convierte a yyyyMMdd (requisito backend).
-   * - Valida numéricos.
-   */
-  private buildRequest(): PreviewRequest | null {
-    const v = this.form.getRawValue();
-
-    const titolo = String(v.titoloCodice ?? '').trim();
-    const dataIso = String(v.dataCompra ?? '').trim(); // yyyy-MM-dd
-    const imp = Number(v.importoTotale);
-    const qta = Number(v.quantitaTotale);
-
-    if (!titolo || !dataIso || !isFinite(imp) || !isFinite(qta)) {
-      this.error = 'Formulario inválido';
-      return null;
-    }
-
-    const dataCompact = this.isoToCompact(dataIso); // yyyyMMdd
-
-    const req: PreviewRequest = {
-      titoloCodice: titolo,
-      dataCompra: dataCompact,
-      importoTotale: imp,
-      quantitaTotale: qta,
-    };
-    return req;
+  /** Convierte “dd-MM-yyyy” → “yyyy-MM-dd” (para el `<input type="date">`). */
+  private toIsoFromDmy(dmy: string): string {
+    const [dd, mm, yyyy] = dmy.split('-');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  /**
-   * Inicia/renueva el polling para el panel de saldos.
-   */
-  private startUnifiedPolling(): void {
-    this.polling?.unsubscribe();
-
-    if (!this.isTodaySelected()) return; // solo hay polling si es HOY
-
-    this.polling = interval(this.pollingMs)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.api.getSaldiAgenti())
-      )
-      .subscribe({
-        next: (res) => (this.rows = res),
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
-      });
-  }
-
-  /**
-   * Carga inicial única de saldos.
-   */
-  private refreshSaldiLiveOnce(): void {
-    this.api.getSaldiAgenti().subscribe({
-      next: (res: AgenteSaldo[]) => (this.saldiLive = res),
-      error: (err: HttpErrorResponse) => {
-        this.setHttpError(err, 'No se pudieron obtener saldos');
-      },
-    });
-  }
-
-  /**
-   * Normaliza el error HTTP en un mensaje amigable.
-   */
-  private setHttpError(err: HttpErrorResponse, fallback: string): void {
-    // Si el backend devolvió texto plano (Blob), léelo:
-    const blob = err?.error;
-    if (blob instanceof Blob) {
-      blob.text().then((t) => {
-        this.error = (t && t.trim()) || fallback;
-        this.showToast(this.error, 'error', 4000);
-      });
-      return;
-    }
-
-    // Si devolvió JSON con message / code
-    if (err?.error) {
-      const e = err.error;
-      const msg =
-        (typeof e === 'string' && e.trim()) || e.message || e.code || e.detail || e.error || '';
-      if (msg) {
-        this.error = msg;
-        return;
-      }
-    }
-
-    // Fallbacks
-    this.error = err.statusText || err.message || fallback;
-  }
-
-  /**
-   * Devuelve “hoy” en ISO para inputs y endpoints analíticos (yyyy-MM-dd).
-   */
-  private todayStr(): string {
+  /** “Hoy” en ISO (`yyyy-MM-dd`) para inputs y endpoints. */
+  private todayIso(): string {
     const d = new Date();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
@@ -431,13 +326,82 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Convierte 'yyyy-MM-dd' → 'yyyyMMdd' (backend preview/conferma).
+   * Construye el payload para preview/conferma:
+   * - Usa fecha ISO (yyyy-MM-dd) tal cual (tu backend ya la acepta en JSON)
+   * - Valida números
    */
-  private isoToCompact(iso: string): string {
-    return iso.replace(/-/g, '');
+  private buildRequest(): PreviewRequest | null {
+    const v = this.form.getRawValue();
+
+    const titolo = String(v.titoloCodice ?? '').trim();
+    const dataIso = String(v.dataCompra ?? '').trim(); // SIEMPRE ISO en el form
+    const imp = Number(v.importoTotale);
+    const qta = Number(v.quantitaTotale);
+
+    if (!titolo || !dataIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) || !isFinite(imp) || !isFinite(qta)) {
+      this.error = !dataIso ? 'Fecha inválida.' : 'Formulario inválido';
+      return null;
+    }
+
+    const req: PreviewRequest = {
+      titoloCodice: titolo,
+      dataCompra: dataIso,     // tu backend espera ISO en JSON
+      importoTotale: imp,
+      quantitaTotale: qta,
+    };
+    return req;
   }
 
-  // ===== Toast helpers =====
+  /** Activa polling únicamente si la fecha seleccionada es HOY. */
+  private startUnifiedPolling(): void {
+    this.polling?.unsubscribe();
+
+    if (!this.isTodaySelected()) return; // solo hay polling si es HOY
+
+    this.polling = interval(this.pollingMs)
+      .pipe(startWith(0), switchMap(() => this.api.getSaldiAgenti()))
+      .subscribe({
+        next: (res) => (this.rows = res),
+        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
+      });
+  }
+
+  // ======================================================
+  // manejo de errores (HTTP → mensaje amigable)
+  // ======================================================
+  private setHttpError(err: HttpErrorResponse, fallback = 'Error'): void {
+    const emit = (msg: string) => {
+      this.error = msg;
+      this.showToast(msg, 'error', 4000);
+    };
+
+    const blob = err?.error;
+    if (blob instanceof Blob) {
+      blob.text().then((t) => emit(t?.trim() || fallback));
+      return;
+    }
+
+    if (err?.error) {
+      const e = err.error as any;
+      const msg =
+        (typeof e === 'string' && e.trim()) ||
+        e?.message ||
+        e?.code ||
+        e?.detail ||
+        e?.error ||
+        '';
+      if (msg) {
+        emit(msg);
+        return;
+      }
+    }
+
+    emit(err.statusText || err.message || fallback);
+  }
+
+  // ======================================================
+  // mini-toast
+  // ======================================================
   showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
     this.toastMsg = msg;
     this.toastType = type;
@@ -451,12 +415,15 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     clearTimeout(this.toastTimer);
   }
 
-  // Suma de saldos de la tabla unificada
+  // ======================================================
+  // utilidades para el badge de saldo total
+  // ======================================================
+  /** Suma de saldos (lo que se ve en la tabla unificada). */
   get saldoTotaleDisponibile(): number {
     return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
   }
 
-  // Para colorear el badge según el estado
+  /** Color del badge según si el importe solicitado supera el saldo. */
   get badgeType(): 'ok' | 'warn' | 'neg' {
     const tot = this.saldoTotaleDisponibile;
     if (tot < 0) return 'neg';

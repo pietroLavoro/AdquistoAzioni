@@ -7,10 +7,12 @@
         style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
       >
         <div>
-          <label for="titolo">Código Título</label><br />
-          <select id="titolo" formControlName="titoloCodice">
-            <option value="">-- Selecciona --</option>
-            <option *ngFor="let t of titoli" [value]="t.code">{{ t.label }}</option>
+          <label for="titoloCodice">Código Título</label><br />
+          <select id="titoloCodice" formControlName="titoloCodice">
+            <option value="" disabled>-- Selecciona --</option>
+            <option *ngFor="let t of titoli" [value]="t.codice">
+              {{ t.codice }} - {{ t.descrizione }}
+            </option>
           </select>
         </div>
 
@@ -29,8 +31,8 @@
       </div>
 
       <div style="margin-bottom: 8px">
-        <label for="data">Fecha (yyyy-MM-dd)</label><br />
-        <input id="data" type="date" formControlName="dataCompra" />
+        <label for="dataCompra">Fecha (dd-MM-yyyy)</label><br />
+        <input type="date" formControlName="dataCompra" aria-label="Fecha (yyyy-MM-dd)" />
       </div>
 
       <div style="margin-bottom: 8px">
