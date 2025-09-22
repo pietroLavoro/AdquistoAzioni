@@ -1,192 +1,111 @@
-<!-- acquisito-form.component.html (versión unificada) -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
-  <!-- Columna izquierda: FORM -->
-  <section>
-    <form [formGroup]="form" novalidate>
-      <div
-        style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-      >
-        <div>
-          <label for="titoloCodice">Código Título</label><br />
-          <select id="titoloCodice" formControlName="titoloCodice">
-            <option value="" disabled>-- Selecciona --</option>
-            <option *ngFor="let t of titoli" [value]="t.codice">
-              {{ t.codice }} - {{ t.descrizione }}
-            </option>
-          </select>
-        </div>
-
-        <!-- 👇 Badge de saldo total disponible -->
-        <span
-          class="badge"
-          [ngClass]="{
-            'badge--ok': badgeType === 'ok',
-            'badge--warn': badgeType === 'warn',
-            'badge--neg': badgeType === 'neg'
-          }"
-          title="Suma de saldos disponibles de los agentes"
-        >
-          Saldo total: {{ saldoTotaleDisponibile | number : '1.2-2' }}
-        </span>
-      </div>
-
-      <div style="margin-bottom: 8px">
-        <label for="dataCompra">Fecha (dd-MM-yyyy)</label><br />
-        <input type="date" formControlName="dataCompra" aria-label="Fecha (yyyy-MM-dd)" />
-      </div>
-
-      <div style="margin-bottom: 8px">
-        <label for="imp">Importe total</label><br />
-        <input id="imp" type="number" formControlName="importoTotale" />
-      </div>
-
-      <div style="margin-bottom: 8px">
-        <label for="qta">Cantidad total</label><br />
-        <input id="qta" type="number" formControlName="quantitaTotale" />
-      </div>
-
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
-        <button type="button" (click)="doPreview()" [disabled]="loading || form.invalid">
-          Previsualizar
-        </button>
-
-        <button
-          type="button"
-          (click)="onSuggerisciData()"
-          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0"
-        >
-          Sugerir fecha
-        </button>
-
-        <!-- Muevo aquí el reset y elimino “Ver agentes activos” -->
-        <button type="button" (click)="resetSaldos()" [disabled]="loading">Reiniciar saldos</button>
-      </div>
-
-      <p *ngIf="error" style="color: #c00; margin-top: 8px">Error: {{ error }}</p>
-    </form>
-
-    <!-- PREVISUALIZACIÓN -->
-    <div *ngIf="preview" style="margin-top: 16px; padding: 12px; border: 1px solid #999">
-      <h3>Previsualización</h3>
-
-      <p>
-        <strong>Título:</strong> {{ preview!.titoloCodice }}
-        &nbsp; | &nbsp;
-        <strong>Fecha:</strong> {{ preview!.dataCompra }}
-        &nbsp; | &nbsp;
-        <strong>Importe total:</strong> {{ preview!.importoTotale | number : '1.2-2' }}
-        &nbsp; | &nbsp;
-        <strong>Cantidad total:</strong> {{ preview!.quantitaTotale }}
-      </p>
-
-      <table border="1" cellpadding="6" style="margin-top: 8px; width: 100%; max-width: 680px">
-        <thead>
-          <tr>
-            <th style="text-align: left">Agente ID</th>
-            <th style="text-align: left">CF</th>
-            <th style="text-align: right">Importe asignado</th>
-            <th style="text-align: right">Cantidad asignada</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let r of preview!.riparto">
-            <td>{{ r.agenteId }}</td>
-            <td>{{ r.codiceFiscale }}</td>
-            <td style="text-align: right">{{ r.importoAgente | number : '1.2-2' }}</td>
-            <td style="text-align: right">{{ r.quantitaAgente }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="margin-top: 12px">
-        <button type="button" (click)="confirmarDesdePreview()" [disabled]="loading">
-          {{ loading ? 'Confirmando…' : 'Confirmar compra' }}
-        </button>
-        <button
-          type="button"
-          (click)="cancelarPreview()"
-          [disabled]="loading"
-          style="margin-left: 8px"
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
-    <!-- /PREVISUALIZACIÓN -->
-  </section>
-
-  <!-- Columna derecha: SALDOS (único recuadro) -->
-  <section>
-    <div style="display: flex; align-items: baseline; gap: 12px">
-      <h3 style="margin: 0">Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}</h3>
-      <small *ngIf="isTodaySelected()" style="font-weight: normal; color: #555">
-        (actualiza cada 5s)
-      </small>
-      <span style="flex: 1 1 auto"></span>
-    </div>
-
-    <table border="1" cellpadding="6" style="width: 420px; margin-top: 8px">
-      <thead>
-        <tr>
-          <th style="text-align: left">ID</th>
-          <th style="text-align: left">CF</th>
-          <th style="text-align: right">Saldo disp.</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let r of rows">
-          <td>{{ r.id }}</td>
-          <td>{{ r.codiceFiscale }}</td>
-          <td [style.text-align]="'right'" [style.color]="r.saldoDisponibile < 0 ? '#c00' : '#000'">
-            {{ r.saldoDisponibile | number : '1.2-2' }}
-          </td>
-        </tr>
-        <tr *ngIf="!rows?.length">
-          <td colspan="3" style="text-align: center; color: #666">Sin datos</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-</div>
-
-<!-- Compras registradas (incrustado) -->
-<section style="margin-top: 16px">
-  <app-acquisti-list [embedded]="true"></app-acquisti-list>
-</section>
-
-<!-- Toast -->
-<div
-  class="toast"
-  [class.show]="toastVisible"
-  [class.toast--success]="toastType === 'success'"
-  [class.toast--info]="toastType === 'info'"
-  [class.toast--error]="toastType === 'error'"
->
-  {{ toastMsg }}
-  <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
-</div>
-
-<!-- ejemplo con PrimeNG -->
-<p-dropdown
-  [options]="titoli"
-  optionLabel="descrizione"
-  optionValue="codice"
-  formControlName="titoloCodice"
-  placeholder="Seleccione título">
-</p-dropdown>
-
-<p-calendar
-  formControlName="dataCompra"
-  dateFormat="yy-mm-dd"
-  [showIcon]="true">
-</p-calendar>
-
-<p-inputNumber
-  formControlName="importoTotale"
-  mode="currency"
-  currency="EUR">
-</p-inputNumber>
-
-<p-button label="Previsualizar" (onClick)="doPreview()" [loading]="loading"></p-button>
 <p-toast></p-toast>
 <p-confirmDialog></p-confirmDialog>
+
+<div class="container">
+  <h2 class="mb-3">Nuovo Acquisto</h2>
+
+  <p *ngIf="error" class="p-error" style="margin-bottom:1rem;">{{ error }}</p>
+
+  <form [formGroup]="form" (ngSubmit)="doPreview()" class="p-fluid" novalidate>
+    <!-- Titolo -->
+    <div class="p-field" style="margin-bottom:1rem;">
+      <label for="titolo" class="p-d-block">Titolo</label>
+      <p-dropdown
+        id="titolo"
+        formControlName="titoloCodice"
+        [options]="titoli"
+        optionLabel="descrizione"
+        optionValue="codice"
+        placeholder="Seleziona titolo"
+        [showClear]="true">
+      </p-dropdown>
+      <small class="p-error" *ngIf="form.get('titoloCodice')?.touched && form.get('titoloCodice')?.invalid">
+        Seleziona un titolo.
+      </small>
+    </div>
+
+    <!-- Data -->
+    <div class="p-field" style="margin-bottom:1rem;">
+      <label for="data" class="p-d-block">Data acquisto</label>
+      <p-calendar
+        id="data"
+        formControlName="dataCompra"
+        dateFormat="yy-mm-dd"
+        [showIcon]="true"
+        inputId="dataCompra">
+      </p-calendar>
+      <small class="p-error" *ngIf="form.get('dataCompra')?.touched && form.get('dataCompra')?.invalid">
+        Data non valida (formato: yyyy-mm-dd).
+      </small>
+      <div class="mt-2">
+        <button type="button" pButton label="Suggerisci data" (click)="onSuggerisciData()"></button>
+      </div>
+    </div>
+
+    <!-- Quantità -->
+    <div class="p-field" style="margin-bottom:1rem;">
+      <label for="qta" class="p-d-block">Quantità totale</label>
+      <p-inputNumber id="qta" formControlName="quantitaTotale" [minFractionDigits]="0"></p-inputNumber>
+      <small class="p-error" *ngIf="form.get('quantitaTotale')?.touched && form.get('quantitaTotale')?.invalid">
+        Inserisci una quantità &ge; 1.
+      </small>
+    </div>
+
+    <!-- Importo -->
+    <div class="p-field" style="margin-bottom:1rem;">
+      <label for="imp" class="p-d-block">Importo totale</label>
+      <p-inputNumber id="imp" formControlName="importoTotale" mode="currency" currency="EUR" [minFractionDigits]="2"></p-inputNumber>
+      <small class="p-error" *ngIf="form.get('importoTotale')?.touched && form.get('importoTotale')?.invalid">
+        Inserisci un importo &gt; 0.
+      </small>
+    </div>
+
+    <!-- Acciones -->
+    <div class="p-formgroup-inline" style="gap:.5rem; margin:1rem 0;">
+      <button type="submit" pButton label="Previsualizar" [loading]="loading"></button>
+      <button type="button" pButton label="Conferma" class="p-button-success" (click)="doConferma()" [disabled]="loading || form.invalid"></button>
+      <button type="button" pButton label="Reset saldi" class="p-button-secondary" (click)="resetSaldos()" [disabled]="loading"></button>
+    </div>
+  </form>
+
+  <!-- Preview -->
+  <div *ngIf="preview" class="p-card" style="padding:1rem; margin-top:1rem;">
+    <h3>Preview</h3>
+    <pre style="white-space: pre-wrap; word-break: break-word;">{{ preview | json }}</pre>
+    <div style="margin-top:.5rem; display:flex; gap:.5rem;">
+      <button type="button" pButton label="Conferma" class="p-button-success" (click)="confirmarDesdePreview()" [disabled]="loading"></button>
+      <button type="button" pButton label="Annulla" class="p-button-secondary" (click)="cancelarPreview()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  <!-- Indicadores -->
+  <div style="margin-top:1rem;">
+    <span>Saldo totale disponibile: <b>{{ saldoTotaleDisponibile | number:'1.2-2' }} €</b></span>
+    <span *ngIf="badgeType === 'warn'" class="p-tag p-tag-warning" style="margin-left:.5rem;">Importo &gt; saldo</span>
+    <span *ngIf="badgeType === 'neg'" class="p-tag p-tag-danger" style="margin-left:.5rem;">Saldo negativo</span>
+    <span *ngIf="badgeType === 'ok'" class="p-tag p-tag-success" style="margin-left:.5rem;">OK</span>
+  </div>
+
+  <!-- Tabla -->
+  <div style="margin-top:1rem;">
+    <p-table [value]="rows" [tableStyle]="{ 'min-width': '30rem' }">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Agente</th>
+          <th>Saldo disponibile</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-r>
+        <tr>
+          <td>{{ r?.nome ?? r?.cognome ?? '-' }}</td>
+          <td>{{ r?.saldoDisponibile | number:'1.2-2' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="2">Nessun dato</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

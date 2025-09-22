@@ -1,10 +1,17 @@
 import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  Validators,
+} from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
-// PrimeNG (módulos básicos de UI que seguramente usarás)
-import { ButtonModule } from 'primeng/button';
+import { interval, Subscription } from 'rxjs';
+import { finalize, startWith, switchMap } from 'rxjs/operators';
+
+/* PrimeNG v20 */
 import { DropdownModule } from 'primeng/dropdown';
 import { CalendarModule } from 'primeng/calendar';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -12,35 +19,29 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ButtonModule } from 'primeng/button';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
-import { interval, Subscription } from 'rxjs';
-import { finalize, startWith, switchMap } from 'rxjs/operators';
-
-// Servicio + DTOs
+/* Servicio + DTOs (ajusta la ruta si difiere) */
 import {
   AcquistiService,
   AgenteSaldo,
   SuggestimentoData,
   PreviewRequest,
   PreviewResponse,
-  Titolo, // si lo exportas desde el service
-} from '../../acquisti.service';
+  Titolo,
+} from '../../acquisti/acquisti.service';
 
-// Tu lista de compras, **standalone** (ver punto 1)
-import { AcquistiListComponent } from '../../acquisti-list/acquisti-list.component';
+/* Lista standalone (ajusta ruta si difiere) */
+import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-list.component';
 
 @Component({
   selector: 'app-acquisto-form',
   standalone: true,
   imports: [
-    // Angular
     CommonModule,
+    FormsModule, // <-- añadido
     ReactiveFormsModule,
-    DecimalPipe,
-
-    // PrimeNG (usa lo que realmente necesites)
-    ButtonModule,
     DropdownModule,
     CalendarModule,
     InputNumberModule,
@@ -48,73 +49,61 @@ import { AcquistiListComponent } from '../../acquisti-list/acquisti-list.compone
     TagModule,
     ToastModule,
     ConfirmDialogModule,
-
-    // Tus componentes standalone
+    ButtonModule,
     AcquistiListComponent,
   ],
-  providers: [
-    MessageService, // para <p-toast>
-    ConfirmationService, // para <p-confirmDialog>
-  ],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './acquisto-form.component.html',
   styleUrls: ['./acquisto-form.component.css'],
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
-  // -------------------- estado base --------------------
+  /* ====== estado base ====== */
   private fb = inject(FormBuilder);
   constructor(private api: AcquistiService) {}
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
 
-  loading = false; // bloquea botones mientras hay request en curso
-  error: string | null = null; // mensaje de error visible en la UI
+  loading = false;
+  error: string | null = null;
 
-  // -------------------- combos / datos maestros --------------------
+  /* ====== combos / datos maestros ====== */
   titoli: Titolo[] = [];
 
-  // -------------------- panel unificado de saldos --------------------
-  /** Filas que muestra la tabla unificada (en vivo si es HOY; “a la fecha” si no) */
+  /* ====== tabla unificada de saldos ====== */
   rows: AgenteSaldo[] = [];
-
-  /** Polling de saldos en vivo (solo si la fecha seleccionada es HOY) */
   polling?: Subscription;
   pollingMs = 5000;
 
-  // -------------------- “agentes activos a la fecha” (para badge y sugerencia) --------------------
+  /* ====== agentes activos a la fecha ====== */
   agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
   numAgentiAttivi = 0;
 
-  // -------------------- formulario (FECHA en **ISO yyyy-MM-dd**) --------------------
+  /* ====== formulario (fecha ISO yyyy-MM-dd) ====== */
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
-    dataCompra: [this.todayIso(), [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
+    dataCompra: [
+      this.todayIso(),
+      [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)],
+    ],
     importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
     quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
-  // -------------------- bloque de previsualización --------------------
+  /* ====== bloque de previsualización ====== */
   preview: PreviewResponse | null = null;
 
-  // -------------------- mini-toast básico --------------------
+  /* ====== mini toast ====== */
   toastMsg = '';
   toastType: 'success' | 'info' | 'error' = 'info';
   toastVisible = false;
   private toastTimer?: any;
 
-  // ======================================================
-  // ciclo de vida
-  // ======================================================
+  // ---------------- Ciclo de vida ----------------
   ngOnInit(): void {
-    // tabla unificada inicial (si hoy → en vivo; si no → a la fecha)
     this.refreshSaldosUnifiedOnce();
-
-    // activa polling solo si la fecha seleccionada es HOY
     this.startUnifiedPolling();
-
-    // agentes activos a la fecha (para badge + sugerir fecha)
     this.verAgentesActivos();
 
-    // cargar títulos y seleccionar el primero si no hay selección
     this.api.getTitoli().subscribe({
       next: (res) => {
         this.titoli = res ?? [];
@@ -123,7 +112,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
           this.form.patchValue({ titoloCodice: this.titoli[0].codice });
         }
       },
-      error: (err) => this.setHttpError(err, 'No se pudieron cargar los títulos'),
+      error: (err) =>
+        this.setHttpError(err, 'No se pudieron cargar los títulos'),
     });
   }
 
@@ -132,20 +122,15 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.hideToast();
   }
 
-  // ======================================================
-  // acciones de UI
-  // ======================================================
-
-  /** ¿la fecha del form es “hoy”? (para decidir si hay polling y qué mostrar) */
+  // ---------------- Acciones de UI ----------------
   isTodaySelected(): boolean {
     const d = (this.form.get('dataCompra')?.value || '').trim();
     return !!d && d === this.todayIso();
   }
 
-  /** Previsualiza la compra y muestra el bloque de reparto. */
   doPreview(): void {
     this.error = null;
-    const req = this.buildRequest(); // construye payload (fecha ISO, numéricos validados)
+    const req = this.buildRequest();
     if (!req) return;
 
     this.loading = true;
@@ -153,7 +138,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .preview(req)
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: (resp: PreviewResponse) => {
+        next: (resp) => {
           this.preview = resp;
           this.showToast('Previsualización OK', 'info');
         },
@@ -165,7 +150,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Confirma la compra (flujo directo). Recomendado confirmar desde el bloque de preview. */
   doConferma(): void {
     this.error = null;
     const req = this.buildRequest();
@@ -179,42 +163,39 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         next: () => {
           this.preview = null;
           this.showToast('Compra confirmada', 'success');
-          // refrescos inmediatos
           this.refreshSaldosUnifiedOnce();
           this.startUnifiedPolling();
           this.verAgentesActivos();
-          this.listCmp?.load(); // recarga “compras registradas”
+          this.listCmp?.load();
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
+          this.showToast(
+            this.error || 'Error al confirmar compra',
+            'error',
+            4000
+          );
         },
       });
   }
 
-  /** Click del botón “Sugerir fecha”. */
   onSuggerisciData(): void {
     this.sugerirFecha();
   }
 
-  /**
-   * Sugerir fecha:
-   * - valida título
-   * - usa #agentes activos (badge) para esa fecha
-   * - llama al backend (devuelve dd-MM-yyyy)
-   * - convierte a ISO yyyy-MM-dd para el `<input type="date">`
-   * - refresca agentes y la tabla unificada
-   */
   sugerirFecha(): void {
     this.error = null;
 
-    const titolo = (this.form.get('titoloCodice')?.value as string | undefined)?.trim();
+    const titolo = (
+      this.form.get('titoloCodice')?.value as string | undefined
+    )?.trim();
     if (!titolo) {
       this.error = 'Debe seleccionar un título';
       return;
     }
 
-    const n = this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
+    const n =
+      this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
     if (n <= 0) {
       this.error = 'No hay agentes activos para sugerir una fecha.';
       return;
@@ -223,15 +204,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.api.suggestData(titolo, n).subscribe({
       next: (sug: SuggestimentoData) => {
-        // backend devuelve dd-MM-yyyy → convierto a ISO para el input type="date"
-        const iso = this.toIsoFromDmy(sug.dataSuggerita);
+        const iso = this.toIsoFromDmy(sug.dataSuggerita); // dd-MM-yyyy -> yyyy-MM-dd
         this.form.patchValue({ dataCompra: iso });
-
-        // refrescos
         this.verAgentesActivos();
         this.refreshSaldosUnifiedOnce();
         this.startUnifiedPolling();
-
         this.loading = false;
       },
       error: (err) => {
@@ -241,10 +218,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Obtiene agentes activos a la fecha del formulario (ISO). */
   verAgentesActivos(): void {
     this.error = null;
-    const dataIso = ((this.form.get('dataCompra')?.value as string) || '').trim();
+    const dataIso = (
+      (this.form.get('dataCompra')?.value as string) || ''
+    ).trim();
     if (!dataIso) return;
 
     this.api.getAgentiAttiviAlla(dataIso).subscribe({
@@ -258,27 +236,28 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Resetea los saldos de prueba y refresca ambos paneles + lista. */
   resetSaldos(): void {
     this.error = null;
     this.api.resetSaldos().subscribe({
       next: () => {
         this.showToast('Saldos reiniciados', 'success');
         this.preview = null;
-
         this.refreshSaldosUnifiedOnce();
         this.startUnifiedPolling();
         this.verAgentesActivos();
-        this.listCmp?.load(); // limpia/recarga lista
+        this.listCmp?.load();
       },
       error: (err) => {
         this.setHttpError(err, 'Error al reiniciar saldos');
-        this.showToast(this.error || 'Error al reiniciar saldos', 'error', 4000);
+        this.showToast(
+          this.error || 'Error al reiniciar saldos',
+          'error',
+          4000
+        );
       },
     });
   }
 
-  /** Confirma desde el bloque de preview. */
   confirmarDesdePreview(): void {
     if (!this.preview) return;
     const req = this.buildRequest();
@@ -299,59 +278,51 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
+          this.showToast(
+            this.error || 'Error al confirmar compra',
+            'error',
+            4000
+          );
         },
       });
   }
 
-  /** Cierra el bloque de previsualización. */
   cancelarPreview(): void {
     this.preview = null;
   }
 
-  // ======================================================
-  // helpers de datos y fechas
-  // ======================================================
-
-  /**
-   * Refresca la tabla unificada:
-   * - Si la fecha es HOY → llama saldos “en vivo”
-   * - Si la fecha NO es hoy → llama “agentes a la fecha”
-   */
+  // ---------------- Helpers ----------------
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
-
     if (!dateIso) {
       this.rows = [];
       return;
     }
 
     if (this.isTodaySelected()) {
-      // en vivo
       this.api.getSaldiAgenti().subscribe({
         next: (res) => (this.rows = res),
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
+        error: (err) =>
+          this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
     } else {
-      // a la fecha
       this.api.getAgentiAttiviAlla(dateIso).subscribe({
         next: (res) => {
           this.agentiInfo = res;
           this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
-          this.rows = res.agenti || [];
+          this.rows = res?.agenti || [];
         },
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
+        error: (err) =>
+          this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
       });
     }
   }
 
-  /** Convierte “dd-MM-yyyy” → “yyyy-MM-dd” (para el `<input type="date">`). */
   private toIsoFromDmy(dmy: string): string {
     const [dd, mm, yyyy] = dmy.split('-');
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  /** “Hoy” en ISO (`yyyy-MM-dd`) para inputs y endpoints. */
   private todayIso(): string {
     const d = new Date();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -359,16 +330,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     return `${d.getFullYear()}-${mm}-${dd}`;
   }
 
-  /**
-   * Construye el payload para preview/conferma:
-   * - Usa fecha ISO (yyyy-MM-dd) tal cual (tu backend ya la acepta en JSON)
-   * - Valida números
-   */
   private buildRequest(): PreviewRequest | null {
     const v = this.form.getRawValue();
 
     const titolo = String(v.titoloCodice ?? '').trim();
-    const dataIso = String(v.dataCompra ?? '').trim(); // SIEMPRE ISO en el form
+    const dataIso = String(v.dataCompra ?? '').trim();
     const imp = Number(v.importoTotale);
     const qta = Number(v.quantitaTotale);
 
@@ -385,18 +351,16 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
     const req: PreviewRequest = {
       titoloCodice: titolo,
-      dataCompra: dataIso, // tu backend espera ISO en JSON
+      dataCompra: dataIso,
       importoTotale: imp,
       quantitaTotale: qta,
     };
     return req;
   }
 
-  /** Activa polling únicamente si la fecha seleccionada es HOY. */
   private startUnifiedPolling(): void {
     this.polling?.unsubscribe();
-
-    if (!this.isTodaySelected()) return; // solo hay polling si es HOY
+    if (!this.isTodaySelected()) return;
 
     this.polling = interval(this.pollingMs)
       .pipe(
@@ -405,13 +369,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (res) => (this.rows = res),
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
+        error: (err) =>
+          this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
   }
 
-  // ======================================================
-  // manejo de errores (HTTP → mensaje amigable)
-  // ======================================================
   private setHttpError(err: HttpErrorResponse, fallback = 'Error'): void {
     const emit = (msg: string) => {
       this.error = msg;
@@ -427,7 +389,12 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (err?.error) {
       const e = err.error as any;
       const msg =
-        (typeof e === 'string' && e.trim()) || e?.message || e?.code || e?.detail || e?.error || '';
+        (typeof e === 'string' && e.trim()) ||
+        e?.message ||
+        e?.code ||
+        e?.detail ||
+        e?.error ||
+        '';
       if (msg) {
         emit(msg);
         return;
@@ -437,10 +404,12 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     emit(err.statusText || err.message || fallback);
   }
 
-  // ======================================================
-  // mini-toast
-  // ======================================================
-  showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
+  // ---------------- Mini toast ----------------
+  showToast(
+    msg: string,
+    type: 'success' | 'info' | 'error' = 'info',
+    ms = 2500
+  ): void {
     this.toastMsg = msg;
     this.toastType = type;
     this.toastVisible = true;
@@ -453,15 +422,14 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     clearTimeout(this.toastTimer);
   }
 
-  // ======================================================
-  // utilidades para el badge de saldo total
-  // ======================================================
-  /** Suma de saldos (lo que se ve en la tabla unificada). */
+  // ---------------- Badge helpers ----------------
   get saldoTotaleDisponibile(): number {
-    return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
+    return (this.rows || []).reduce(
+      (acc, a) => acc + (a?.saldoDisponibile ?? 0),
+      0
+    );
   }
 
-  /** Color del badge según si el importe solicitado supera el saldo. */
   get badgeType(): 'ok' | 'warn' | 'neg' {
     const tot = this.saldoTotaleDisponibile;
     if (tot < 0) return 'neg';

@@ -1,0 +1,8 @@
+/* styles.css - sin @import a node_modules */
+
+:root { font-family: Inter, system-ui, Arial, sans-serif; }
+html, body { height: 100%; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+/* helpers opcionales */
+.container { max-width: 1200px; margin: 0 auto; padding: 1rem; }

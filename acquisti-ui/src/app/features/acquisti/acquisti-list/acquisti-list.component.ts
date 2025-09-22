@@ -9,7 +9,7 @@ import { AcquistiService, Summary } from '../acquisti.service';
   standalone: true,                 // ✅ IMPORTANTE
   imports: [CommonModule, DecimalPipe],
   templateUrl: './acquisti-list.component.html',
-  styleUrls: ['./acquisti-list.component.css'],
+  styleUrls: ['./acquisti-list.css'],
 })
 export class AcquistiListComponent implements OnInit {
   @Input() embedded = false; // ← modo incrustado

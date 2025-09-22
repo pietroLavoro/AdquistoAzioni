@@ -1,1 +1,7 @@
-/* You can add global styles to this file, and also import other style files */
+/* Reset mínimo y tipografía base */
+:root { font-family: Inter, system-ui, Arial, sans-serif; }
+html, body { height: 100%; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Helpers */
+.container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
