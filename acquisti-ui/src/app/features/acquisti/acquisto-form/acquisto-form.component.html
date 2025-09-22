@@ -1,4 +1,4 @@
-<!-- acquisito-form.component.html (versión unificada) -->
+<!-- acquisto-form.component.html (PrimeNG v20) -->
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
   <!-- Columna izquierda: FORM -->
   <section>
@@ -8,15 +8,20 @@
       >
         <div>
           <label for="titoloCodice">Código Título</label><br />
-          <select id="titoloCodice" formControlName="titoloCodice">
-            <option value="" disabled>-- Selecciona --</option>
-            <option *ngFor="let t of titoli" [value]="t.codice">
-              {{ t.codice }} - {{ t.descrizione }}
-            </option>
-          </select>
+          <p-select
+            id="titoloCodice"
+            formControlName="titoloCodice"
+            [options]="titoli"
+            optionLabel="descrizione"
+            optionValue="codice"
+            placeholder="Seleccione título"
+            [showClear]="true"
+            style="min-width: 260px"
+          >
+          </p-select>
         </div>
 
-        <!-- 👇 Badge de saldo total disponible -->
+        <!-- Badge de saldo total disponible -->
         <span
           class="badge"
           [ngClass]="{
@@ -31,35 +36,68 @@
       </div>
 
       <div style="margin-bottom: 8px">
-        <label for="dataCompra">Fecha (dd-MM-yyyy)</label><br />
-        <input type="date" formControlName="dataCompra" aria-label="Fecha (yyyy-MM-dd)" />
+        <label for="dataCompra">Fecha</label><br />
+        <!-- DatePicker nuevo: dataType string para mantener ISO en el form -->
+        <p-datepicker
+          id="dataCompra"
+          formControlName="dataCompra"
+          dateFormat="yy-mm-dd"
+          dataType="string"
+          [showIcon]="true"
+          inputId="dataCompra"
+          style="min-width: 220px"
+        >
+        </p-datepicker>
       </div>
 
       <div style="margin-bottom: 8px">
         <label for="imp">Importe total</label><br />
-        <input id="imp" type="number" formControlName="importoTotale" />
+        <p-inputNumber
+          inputId="imp"
+          formControlName="importoTotale"
+          mode="currency"
+          currency="EUR"
+          [min]="0"
+          [step]="1"
+        >
+        </p-inputNumber>
       </div>
 
       <div style="margin-bottom: 8px">
         <label for="qta">Cantidad total</label><br />
-        <input id="qta" type="number" formControlName="quantitaTotale" />
+        <p-inputNumber
+          inputId="qta"
+          formControlName="quantitaTotale"
+          [min]="1"
+          [step]="1"
+          [useGrouping]="false"
+        >
+        </p-inputNumber>
       </div>
 
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
-        <button type="button" (click)="doPreview()" [disabled]="loading || form.invalid">
-          Previsualizar
-        </button>
+        <p-button
+          label="Previsualizar"
+          (onClick)="doPreview()"
+          [disabled]="loading || form.invalid"
+        >
+        </p-button>
 
-        <button
-          type="button"
-          (click)="onSuggerisciData()"
+        <p-button
+          label="Sugerir fecha"
+          severity="secondary"
+          (onClick)="onSuggerisciData()"
           [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0"
         >
-          Sugerir fecha
-        </button>
+        </p-button>
 
-        <!-- Muevo aquí el reset y elimino “Ver agentes activos” -->
-        <button type="button" (click)="resetSaldos()" [disabled]="loading">Reiniciar saldos</button>
+        <p-button
+          label="Reiniciar saldos"
+          severity="warn"
+          (onClick)="resetSaldos()"
+          [disabled]="loading"
+        >
+        </p-button>
       </div>
 
       <p *ngIf="error" style="color: #c00; margin-top: 8px">Error: {{ error }}</p>
@@ -98,30 +136,33 @@
         </tbody>
       </table>
 
-      <div style="margin-top: 12px">
-        <button type="button" (click)="confirmarDesdePreview()" [disabled]="loading">
-          {{ loading ? 'Confirmando…' : 'Confirmar compra' }}
-        </button>
-        <button
-          type="button"
-          (click)="cancelarPreview()"
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap">
+        <p-button
+          [label]="loading ? 'Confirmando…' : 'Confirmar compra'"
+          (onClick)="confirmarDesdePreview()"
           [disabled]="loading"
-          style="margin-left: 8px"
         >
-          Cancelar
-        </button>
+        </p-button>
+
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          (onClick)="cancelarPreview()"
+          [disabled]="loading"
+        >
+        </p-button>
       </div>
     </div>
     <!-- /PREVISUALIZACIÓN -->
   </section>
 
-  <!-- Columna derecha: SALDOS (único recuadro) -->
+  <!-- Columna derecha: SALDOS -->
   <section>
     <div style="display: flex; align-items: baseline; gap: 12px">
       <h3 style="margin: 0">Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}</h3>
-      <small *ngIf="isTodaySelected()" style="font-weight: normal; color: #555">
-        (actualiza cada 5s)
-      </small>
+      <small *ngIf="isTodaySelected()" style="font-weight: normal; color: #555"
+        >(actualiza cada 5s)</small
+      >
       <span style="flex: 1 1 auto"></span>
     </div>
 
@@ -154,39 +195,6 @@
   <app-acquisti-list [embedded]="true"></app-acquisti-list>
 </section>
 
-<!-- Toast -->
-<div
-  class="toast"
-  [class.show]="toastVisible"
-  [class.toast--success]="toastType === 'success'"
-  [class.toast--info]="toastType === 'info'"
-  [class.toast--error]="toastType === 'error'"
->
-  {{ toastMsg }}
-  <button class="toast__close" (click)="hideToast()" aria-label="Cerrar">×</button>
-</div>
-
-<!-- ejemplo con PrimeNG -->
-<p-dropdown
-  [options]="titoli"
-  optionLabel="descrizione"
-  optionValue="codice"
-  formControlName="titoloCodice"
-  placeholder="Seleccione título">
-</p-dropdown>
-
-<p-calendar
-  formControlName="dataCompra"
-  dateFormat="yy-mm-dd"
-  [showIcon]="true">
-</p-calendar>
-
-<p-inputNumber
-  formControlName="importoTotale"
-  mode="currency"
-  currency="EUR">
-</p-inputNumber>
-
-<p-button label="Previsualizar" (onClick)="doPreview()" [loading]="loading"></p-button>
+<!-- Toast y ConfirmDialog de PrimeNG -->
 <p-toast></p-toast>
 <p-confirmDialog></p-confirmDialog>

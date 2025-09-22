@@ -1,23 +1,30 @@
-<!-- Cabecera sólo si NO está embebida -->
-<div *ngIf="!embedded" style="margin-bottom:8px;">
+<!-- Cabecera (sólo cuando NO está embebido) -->
+<div *ngIf="!embedded" class="header" style="margin-bottom: 8px">
   <h1>Compras registradas</h1>
-  <button (click)="nuovo()" [disabled]="loading">Nueva compra</button>
+  <button type="button" (click)="nuovo()" [disabled]="loading">Nueva compra</button>
 </div>
 
-<!-- En modo embebido puedes usar h3 más discreto -->
-<h3 *ngIf="embedded" style="margin:12px 0 4px;">Compras registradas</h3>
+<!-- Título discreto cuando está embebido -->
+<h3 *ngIf="embedded" style="margin: 12px 0 4px">Compras registradas</h3>
 
+<!-- Estados -->
 <div *ngIf="loading">Cargando…</div>
-<div *ngIf="!loading && error" style="color:#c00;">Error: {{ error }}</div>
+<div *ngIf="!loading && error" style="color: #c00">Error: {{ error }}</div>
 
-<table *ngIf="!loading && !error && items.length" border="1" cellpadding="6" style="width:100%;max-width:680px;">
+<!-- Tabla -->
+<table
+  *ngIf="!loading && !error && items.length > 0"
+  border="1"
+  cellpadding="6"
+  style="width: 100%; max-width: 680px; border-collapse: collapse"
+>
   <thead>
     <tr>
-      <th>ID</th>
-      <th>Fecha</th>
+      <th style="width: 6rem">ID</th>
+      <th style="width: 9rem">Fecha</th>
       <th>Título</th>
-      <th>Importe</th>
-      <th>Cantidad</th>
+      <th class="text-right" style="width: 9rem">Importe</th>
+      <th class="text-right" style="width: 9rem">Cantidad</th>
     </tr>
   </thead>
   <tbody>
@@ -25,10 +32,11 @@
       <td>{{ r.id }}</td>
       <td>{{ r.dataCompra }}</td>
       <td>{{ r.titoloCodice }}</td>
-      <td style="text-align:right;">{{ r.importoTotale | number:'1.2-2' }}</td>
-      <td style="text-align:right;">{{ r.quantitaTotale }}</td>
+      <td class="text-right">{{ r.importoTotale | number : '1.2-2' }}</td>
+      <td class="text-right">{{ r.quantitaTotale }}</td>
     </tr>
   </tbody>
 </table>
 
-<p *ngIf="!loading && !error && !items.length">No hay compras aún.</p>
+<!-- Vacío -->
+<p *ngIf="!loading && !error && items.length === 0">No hay compras aún.</p>
