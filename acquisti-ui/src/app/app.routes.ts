@@ -4,8 +4,7 @@ import { AcquistoFormComponent } from './features/acquisti/acquisto-form/acquist
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'acquisti/nuovo' },
-  { path: '', redirectTo: 'acquisti', pathMatch: 'full' },
   { path: 'acquisti', component: AcquistiListComponent },
   { path: 'acquisti/nuovo', component: AcquistoFormComponent },
-  { path: '**', redirectTo: 'acquisti/nuovo' }
+  { path: '**', redirectTo: 'acquisti/nuovo' },
 ];
