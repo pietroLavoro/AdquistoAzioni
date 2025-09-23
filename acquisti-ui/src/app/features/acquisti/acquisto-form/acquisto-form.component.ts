@@ -1,28 +1,23 @@
 import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import {
-  FormsModule,
-  ReactiveFormsModule,
-  FormBuilder,
-  Validators,
-} from '@angular/forms';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { interval, Subscription } from 'rxjs';
 import { finalize, startWith, switchMap } from 'rxjs/operators';
 
-/* PrimeNG v20 */
-import { DropdownModule } from 'primeng/dropdown';
-import { CalendarModule } from 'primeng/calendar';
+/* PrimeNG: usar NgModules en este proyecto */
+import { ButtonModule } from 'primeng/button';
+import { Select } from 'primeng/select';          // ⬅️ reemplaza a Dropdown
+import { DatePicker } from 'primeng/datepicker';  // ⬅️ reemplaza a Calendar
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ButtonModule } from 'primeng/button';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
-/* Servicio + DTOs (ajusta la ruta si difiere) */
+/* Servicio + DTOs */
 import {
   AcquistiService,
   AgenteSaldo,
@@ -32,7 +27,7 @@ import {
   Titolo,
 } from '../../acquisti/acquisti.service';
 
-/* Lista standalone (ajusta ruta si difiere) */
+/* Tu lista standalone */
 import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-list.component';
 
 @Component({
@@ -40,16 +35,21 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule, // <-- añadido
+    FormsModule,
     ReactiveFormsModule,
-    DropdownModule,
-    CalendarModule,
+    DecimalPipe,
+
+    // PrimeNG (NgModules)
+    ButtonModule,
+    Select,
+    DatePicker,
     InputNumberModule,
     TableModule,
     TagModule,
     ToastModule,
     ConfirmDialogModule,
-    ButtonModule,
+
+    // propios
     AcquistiListComponent,
   ],
   providers: [MessageService, ConfirmationService],
@@ -57,7 +57,6 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
   styleUrls: ['./acquisto-form.component.css'],
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
-  /* ====== estado base ====== */
   private fb = inject(FormBuilder);
   constructor(private api: AcquistiService) {}
 
@@ -66,39 +65,28 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
 
-  /* ====== combos / datos maestros ====== */
   titoli: Titolo[] = [];
-
-  /* ====== tabla unificada de saldos ====== */
   rows: AgenteSaldo[] = [];
   polling?: Subscription;
   pollingMs = 5000;
 
-  /* ====== agentes activos a la fecha ====== */
   agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
   numAgentiAttivi = 0;
 
-  /* ====== formulario (fecha ISO yyyy-MM-dd) ====== */
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
-    dataCompra: [
-      this.todayIso(),
-      [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)],
-    ],
+    dataCompra: [this.todayIso(), [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
     importoTotale: [10000, [Validators.required, Validators.min(0.01)]],
     quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
-  /* ====== bloque de previsualización ====== */
   preview: PreviewResponse | null = null;
 
-  /* ====== mini toast ====== */
   toastMsg = '';
   toastType: 'success' | 'info' | 'error' = 'info';
   toastVisible = false;
   private toastTimer?: any;
 
-  // ---------------- Ciclo de vida ----------------
   ngOnInit(): void {
     this.refreshSaldosUnifiedOnce();
     this.startUnifiedPolling();
@@ -112,8 +100,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
           this.form.patchValue({ titoloCodice: this.titoli[0].codice });
         }
       },
-      error: (err) =>
-        this.setHttpError(err, 'No se pudieron cargar los títulos'),
+      error: (err) => this.setHttpError(err, 'No se pudieron cargar los títulos'),
     });
   }
 
@@ -122,7 +109,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.hideToast();
   }
 
-  // ---------------- Acciones de UI ----------------
   isTodaySelected(): boolean {
     const d = (this.form.get('dataCompra')?.value || '').trim();
     return !!d && d === this.todayIso();
@@ -170,11 +156,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(
-            this.error || 'Error al confirmar compra',
-            'error',
-            4000
-          );
+          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
         },
       });
   }
@@ -186,16 +168,13 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   sugerirFecha(): void {
     this.error = null;
 
-    const titolo = (
-      this.form.get('titoloCodice')?.value as string | undefined
-    )?.trim();
+    const titolo = (this.form.get('titoloCodice')?.value as string | undefined)?.trim();
     if (!titolo) {
       this.error = 'Debe seleccionar un título';
       return;
     }
 
-    const n =
-      this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
+    const n = this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
     if (n <= 0) {
       this.error = 'No hay agentes activos para sugerir una fecha.';
       return;
@@ -204,7 +183,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.api.suggestData(titolo, n).subscribe({
       next: (sug: SuggestimentoData) => {
-        const iso = this.toIsoFromDmy(sug.dataSuggerita); // dd-MM-yyyy -> yyyy-MM-dd
+        const iso = this.toIsoFromDmy(sug.dataSuggerita);
         this.form.patchValue({ dataCompra: iso });
         this.verAgentesActivos();
         this.refreshSaldosUnifiedOnce();
@@ -220,9 +199,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   verAgentesActivos(): void {
     this.error = null;
-    const dataIso = (
-      (this.form.get('dataCompra')?.value as string) || ''
-    ).trim();
+    const dataIso = ((this.form.get('dataCompra')?.value as string) || '').trim();
     if (!dataIso) return;
 
     this.api.getAgentiAttiviAlla(dataIso).subscribe({
@@ -249,11 +226,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.setHttpError(err, 'Error al reiniciar saldos');
-        this.showToast(
-          this.error || 'Error al reiniciar saldos',
-          'error',
-          4000
-        );
+        this.showToast(this.error || 'Error al reiniciar saldos', 'error', 4000);
       },
     });
   }
@@ -278,11 +251,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(
-            this.error || 'Error al confirmar compra',
-            'error',
-            4000
-          );
+          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
         },
       });
   }
@@ -291,9 +260,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.preview = null;
   }
 
-  // ---------------- Helpers ----------------
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
+
     if (!dateIso) {
       this.rows = [];
       return;
@@ -302,18 +271,16 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (this.isTodaySelected()) {
       this.api.getSaldiAgenti().subscribe({
         next: (res) => (this.rows = res),
-        error: (err) =>
-          this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
+        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
     } else {
       this.api.getAgentiAttiviAlla(dateIso).subscribe({
         next: (res) => {
           this.agentiInfo = res;
           this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
-          this.rows = res?.agenti || [];
+          this.rows = res.agenti || [];
         },
-        error: (err) =>
-          this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
+        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
       });
     }
   }
@@ -338,13 +305,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     const imp = Number(v.importoTotale);
     const qta = Number(v.quantitaTotale);
 
-    if (
-      !titolo ||
-      !dataIso ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) ||
-      !isFinite(imp) ||
-      !isFinite(qta)
-    ) {
+    if (!titolo || !dataIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) || !isFinite(imp) || !isFinite(qta)) {
       this.error = !dataIso ? 'Fecha inválida.' : 'Formulario inválido';
       return null;
     }
@@ -363,14 +324,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (!this.isTodaySelected()) return;
 
     this.polling = interval(this.pollingMs)
-      .pipe(
-        startWith(0),
-        switchMap(() => this.api.getSaldiAgenti())
-      )
+      .pipe(startWith(0), switchMap(() => this.api.getSaldiAgenti()))
       .subscribe({
         next: (res) => (this.rows = res),
-        error: (err) =>
-          this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
+        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
   }
 
@@ -389,12 +346,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (err?.error) {
       const e = err.error as any;
       const msg =
-        (typeof e === 'string' && e.trim()) ||
-        e?.message ||
-        e?.code ||
-        e?.detail ||
-        e?.error ||
-        '';
+        (typeof e === 'string' && e.trim()) || e?.message || e?.code || e?.detail || e?.error || '';
       if (msg) {
         emit(msg);
         return;
@@ -404,12 +356,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     emit(err.statusText || err.message || fallback);
   }
 
-  // ---------------- Mini toast ----------------
-  showToast(
-    msg: string,
-    type: 'success' | 'info' | 'error' = 'info',
-    ms = 2500
-  ): void {
+  showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
     this.toastMsg = msg;
     this.toastType = type;
     this.toastVisible = true;
@@ -422,12 +369,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     clearTimeout(this.toastTimer);
   }
 
-  // ---------------- Badge helpers ----------------
   get saldoTotaleDisponibile(): number {
-    return (this.rows || []).reduce(
-      (acc, a) => acc + (a?.saldoDisponibile ?? 0),
-      0
-    );
+    return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
   }
 
   get badgeType(): 'ok' | 'warn' | 'neg' {

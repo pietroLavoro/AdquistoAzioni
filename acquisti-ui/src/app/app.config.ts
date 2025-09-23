@@ -1,17 +1,20 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { provideHttpClient, withFetch } from '@angular/common/http';
-import { provideAnimations } from '@angular/platform-browser/animations';
-import { MessageService, ConfirmationService } from 'primeng/api';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+
+import { provideHttpClient } from '@angular/common/http';   // ⬅️ NUEVO
+
+import { providePrimeNG } from 'primeng/config';
+import Aura from '@primeuix/themes/aura';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withFetch()),
-    provideAnimations(), // ✅ NECESARIO para PrimeNG
-    MessageService,      // ✅ NECESARIO para p-toast
-    ConfirmationService  // ✅ NECESARIO para p-confirmDialog
+    provideAnimationsAsync(),
+    provideHttpClient(),   // ⬅️ REGISTRA HttpClient PARA TODA LA APP
+    providePrimeNG({
+      theme: { preset: Aura, options: { darkModeSelector: 'html.dark' } }
+    })
   ]
 };
