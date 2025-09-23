@@ -1,46 +1,79 @@
 <!-- Layout 2 columnas con tarjetas -->
 <div class="app-grid">
-
   <!-- Columna izquierda: FORM -->
   <p-card class="card">
     <ng-template pTemplate="title">Nuevo acquisto</ng-template>
+
+    <div class="kpi-row">
+      <p-card class="kpi" [subheader]="'Saldo total'">
+        <div
+          class="kpi-value"
+          [ngClass]="{
+            neg: saldoTotaleDisponibile < 0,
+            warn: badgeType === 'warn'
+          }"
+        >
+          {{ saldoTotaleDisponibile | number : '1.2-2' }} €
+        </div>
+
+        <!-- Mensaje sutil bajo el valor cuando no está OK -->
+        <small
+          *ngIf="badgeType !== 'ok'"
+          class="kpi-hint"
+          [ngClass]="{ neg: badgeType === 'neg', warn: badgeType === 'warn' }"
+        >
+          {{ badgeType === 'neg' ? 'Saldo negativo' : 'Importe total > saldo disponible' }}
+        </small>
+      </p-card>
+
+      <p-card class="kpi" [subheader]="'Importe total'">
+        <div class="kpi-value">{{ form.value.importoTotale || 0 | number : '1.2-2' }} €</div>
+      </p-card>
+      <p-card class="kpi" [subheader]="'Diferencia'">
+        <div class="kpi-value" [ngClass]="{ neg: diffImporteSaldo() < 0 }">
+          {{ diffImporteSaldo() | number : '1.2-2' }} €
+        </div>
+      </p-card>
+    </div>
 
     <form [formGroup]="form" novalidate class="p-fluid form-grid">
       <!-- Código Título + saldo -->
       <div class="row-inline">
         <div class="field">
-          <label for="titoloCodice">Código Título </label>
+          <label for="titoloCodice">Código Título</label>
           <p-select
-            id="titoloCodice"
+            inputId="titoloCodice"
             formControlName="titoloCodice"
             [options]="titoli"
             optionLabel="descrizione"
             optionValue="codice"
             placeholder="Seleccione título"
             [showClear]="true"
-            style="min-width: 260px">
+            style="min-width: 260px"
+          >
           </p-select>
         </div>
 
-        <!-- Badge de saldo total disponible -->
+        <!-- Badge de saldo total disponible 
         <p-tag
           *ngIf="saldoTotaleDisponibile != null"
-          [value]="'Saldo total: ' + (saldoTotaleDisponibile | number:'1.2-2')"
-          [severity]="badgeType === 'ok' ? 'success' : (badgeType === 'warn' ? 'warn' : 'danger')">
-        </p-tag>
+          [value]="'Saldo total: ' + (saldoTotaleDisponibile | number : '1.2-2')"
+          [severity]="badgeType === 'ok' ? 'success' : badgeType === 'warn' ? 'warn' : 'danger'"
+        >
+        </p-tag>-->
       </div>
 
       <!-- Fecha -->
       <div class="field">
         <label for="dataCompra">Fecha</label>
         <p-datepicker
-          id="dataCompra"
+          inputId="dataCompra"
           formControlName="dataCompra"
           dateFormat="yy-mm-dd"
           dataType="string"
           [showIcon]="true"
-          inputId="dataCompra"
-          style="min-width: 220px">
+          style="min-width: 220px"
+        >
         </p-datepicker>
       </div>
 
@@ -53,7 +86,8 @@
           mode="currency"
           currency="EUR"
           [min]="0"
-          [step]="1">
+          [step]="1"
+        >
         </p-inputNumber>
       </div>
 
@@ -65,7 +99,8 @@
           formControlName="quantitaTotale"
           [min]="1"
           [step]="1"
-          [useGrouping]="false">
+          [useGrouping]="false"
+        >
         </p-inputNumber>
       </div>
 
@@ -75,7 +110,8 @@
           label="Previsualizar"
           icon="pi pi-eye"
           (onClick)="doPreview()"
-          [disabled]="loading || form.invalid">
+          [disabled]="loading || form.invalid"
+        >
         </p-button>
 
         <p-button
@@ -83,7 +119,8 @@
           icon="pi pi-calendar-plus"
           severity="secondary"
           (onClick)="onSuggerisciData()"
-          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0">
+          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0"
+        >
         </p-button>
 
         <p-button
@@ -91,7 +128,8 @@
           icon="pi pi-refresh"
           severity="warn"
           (onClick)="resetSaldos()"
-          [disabled]="loading">
+          [disabled]="loading"
+        >
         </p-button>
       </div>
 
@@ -112,7 +150,11 @@
         </p>
       </div>
 
-      <p-table [value]="preview!.riparto" [responsiveLayout]="'scroll'" [tableStyle]="{ 'min-width': '30rem' }">
+      <p-table
+        [value]="preview!.riparto"
+        [responsiveLayout]="'scroll'"
+        [tableStyle]="{ 'min-width': '30rem' }"
+      >
         <ng-template pTemplate="header">
           <tr>
             <th>Agente ID</th>
@@ -136,7 +178,8 @@
           [label]="loading ? 'Confirmando…' : 'Confirmar compra'"
           icon="pi pi-check"
           (onClick)="confirmarDesdePreview()"
-          [disabled]="loading">
+          [disabled]="loading"
+        >
         </p-button>
 
         <p-button
@@ -144,7 +187,8 @@
           icon="pi pi-times"
           severity="secondary"
           (onClick)="cancelarPreview()"
-          [disabled]="loading">
+          [disabled]="loading"
+        >
         </p-button>
       </div>
     </p-panel>
@@ -155,13 +199,15 @@
   <p-card class="card">
     <ng-template pTemplate="title">
       Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}
-      <small *ngIf="isTodaySelected()" class="muted"> (actualiza cada 5s)</small>
+      <small *ngIf="isTodaySelected()" class="muted"></small>
     </ng-template>
 
     <p-table
       [value]="rows"
-      [responsiveLayout]="'scroll'"
-      [tableStyle]="{ 'min-width': '28rem' }">
+      [scrollable]="true"
+      scrollHeight="360px"
+      [style]="{ 'border-radius': '12px', overflow: 'hidden' }"
+    >
       <ng-template pTemplate="header">
         <tr>
           <th style="width: 5rem">ID</th>
@@ -173,13 +219,15 @@
         <tr>
           <td>{{ r.id }}</td>
           <td>{{ r.codiceFiscale }}</td>
-          <td class="text-right" [ngClass]="{ 'neg': r.saldoDisponibile < 0 }">
+          <td class="text-right" [ngClass]="{ neg: r.saldoDisponibile < 0 }">
             {{ r.saldoDisponibile | number : '1.2-2' }}
           </td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
-        <tr><td colspan="3" class="muted text-center">Sin datos</td></tr>
+        <tr>
+          <td colspan="3" class="muted text-center">Sin datos</td>
+        </tr>
       </ng-template>
     </p-table>
   </p-card>
@@ -187,9 +235,26 @@
 
 <!-- Compras registradas (incrustado) -->
 <p-card class="card mt-3">
-  <ng-template pTemplate="title">Compras registradas</ng-template>
-  <app-acquisti-list [embedded]="true"></app-acquisti-list>
+  <!-- quita el ng-template del título -->
+  <app-acquisti-list [embedded]="false"></app-acquisti-list>
 </p-card>
+
+<div class="loading-overlay" *ngIf="loading">
+  <p-progressSpinner></p-progressSpinner>
+</div>
+
+<!-- Botón flotante para cambiar tema -->
+<div class="theme-toggle">
+  <p-button
+    [icon]="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+    [label]="isDark ? 'Claro' : 'Oscuro'"
+    severity="secondary"
+    size="small"
+    (onClick)="toggleDark()"
+    aria-label="Cambiar tema"
+  >
+  </p-button>
+</div>
 
 <!-- Toast y ConfirmDialog de PrimeNG -->
 <p-toast></p-toast>

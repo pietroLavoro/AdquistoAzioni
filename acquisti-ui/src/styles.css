@@ -1,14 +1,38 @@
-:root { --bg-gradient: linear-gradient(140deg, #eef3ff, #e8f1f7 40%, #f8fbff); }
+/* =========================================================
+   Base + Light theme
+   ========================================================= */
+:root {
+  --bg-gradient-light: linear-gradient(140deg, #eef3ff, #e8f1f7 40%, #f8fbff);
+}
 
 html, body { height: 100%; }
+
+/* Transiciones suaves para cambio de tema */
+html, body,
+.p-card, .p-panel,
+.p-datatable, .p-table,
+.p-inputtext, .p-inputnumber-input,
+.p-select, .p-datepicker,
+.card {
+  transition: background .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease, filter .2s ease;
+}
+
 body {
   margin: 0;
   font-family: var(--font-family, system-ui, sans-serif);
-  background: var(--bg-gradient);
+  background: var(--surface-ground);
+  color: var(--text-color);
   padding: 1rem;
 }
 
-/* Grid principal */
+/* Degradado forzado en modo claro */
+html:not(.dark) body {
+  background: var(--bg-gradient-light);
+}
+
+/* =========================================================
+   Layout
+   ========================================================= */
 .app-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -16,20 +40,228 @@ body {
 }
 .card { border-radius: 1rem; }
 
-/* Utilidades */
+/* =========================================================
+   Utilities
+   ========================================================= */
 .form-grid { display: grid; gap: .75rem; }
-.row-inline { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.field label { display: inline-block; margin-bottom: .25rem; }
+.row-inline { display: flex; align-items: center; gap: .100rem; flex-wrap: wrap; }
+/* Campos del formulario: espacio claro entre label e input */
+.field{
+  display: grid;
+  grid-auto-flow: row;
+  gap: .6rem;            /* ← separación label ↔ input */
+}
+.field > label{
+  margin: 0;
+  display: block;
+  font-weight: 500;
+}
+
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
 .mt-2 { margin-top: .75rem; }
 .mt-3 { margin-top: 1.25rem; }
 .muted { opacity: .7; font-weight: 400; }
 .text-right { text-align: right; }
 .text-center { text-align: center; }
-.err { color: #c00; margin-top: 8px; }
-.neg { color: #c00; }
+.err, .neg { color: #c00; }
+.flex-right { margin-left: auto; }
 
-/* Responsive */
-@media (max-width: 992px) {
-  .app-grid { grid-template-columns: 1fr; }
+/* =========================================================
+   KPIs
+   ========================================================= */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .75rem;
+  margin-bottom: .5rem;
 }
+.kpi .p-card { border-radius: .75rem; }
+.kpi-value { font-size: 1.25rem; font-weight: 700; }
+
+/* =========================================================
+   Loading overlay
+   ========================================================= */
+.loading-overlay{
+  position: fixed; inset: 0;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(0,0,0,.12);
+  backdrop-filter: blur(1px);
+  z-index: 1000;
+}
+
+/* =========================================================
+   Floating theme toggle
+   ========================================================= */
+.theme-toggle{
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1100;
+}
+
+/* =========================================================
+   Responsive
+   ========================================================= */
+@media (max-width: 992px){
+  .app-grid { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px){
+  .theme-toggle{ top: 8px; right: 8px; }
+}
+
+/* =========================================================
+   DARK THEME — SOFT PALETTE
+   (aplica cuando <html class="dark">)
+   ========================================================= */
+html.dark {
+  /* Paleta base suave */
+  --soft-bg-1: #1f2430;
+  --soft-bg-2: #262b36;
+  --soft-card: #2b3040;
+  --soft-border: #3a4152;
+  --soft-text: #e8ebf1;
+  --soft-muted: #b7bfd1;
+  --soft-row-hover: #2f3546;
+  --soft-input: #32384a; /* un poco más claro para mejor contraste */
+
+  --soft-accent: #7aa2f7;
+  --soft-success: #57d39b;
+  --soft-warn:   #ffcc66;
+  --soft-error:  #ff7a90;
+}
+
+/* Fondo + texto global en dark */
+html.dark body {
+  background: linear-gradient(150deg, var(--soft-bg-1), var(--soft-bg-2) 45%, var(--soft-bg-1));
+  color: var(--soft-text);
+}
+
+/* Cards / Paneles con sombra suave */
+html.dark .card,
+html.dark .p-card,
+html.dark .p-panel {
+  background: var(--soft-card) !important;
+  border: 1px solid var(--soft-border) !important;
+  color: var(--soft-text);
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+
+/* Títulos y texto */
+html.dark h1, html.dark h2, html.dark h3,
+html.dark h4, html.dark h5, html.dark h6,
+html.dark label { color: var(--soft-text); }
+html.dark .muted { color: var(--soft-muted); }
+
+/* Inputs (Prime v20) */
+html.dark .p-inputtext,
+html.dark .p-inputnumber-input,
+html.dark .p-datepicker input,
+html.dark .p-select .p-select-label {
+  background: var(--soft-input) !important;
+  color: var(--soft-text) !important;
+  border-color: var(--soft-border) !important;
+}
+html.dark .p-inputtext::placeholder,
+html.dark .p-select .p-select-label.p-placeholder {
+  color: var(--soft-muted) !important;
+}
+
+/* Overlays (dropdowns, datepicker, toast, confirm) */
+html.dark .p-select-panel,
+html.dark .p-datepicker,
+html.dark .p-overlaypanel,
+html.dark .p-confirm-dialog,
+html.dark .p-toast {
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border: 1px solid var(--soft-border) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,.45);
+}
+
+/* Botones: hover sutil en dark */
+html.dark .p-button:hover {
+  filter: brightness(1.15);
+}
+html.dark .p-button.p-button-secondary,
+html.dark .p-button.p-button-text {
+  background: transparent !important;
+  border-color: var(--soft-border) !important;
+  color: var(--soft-text) !important;
+}
+
+/* Tags con tonos suaves */
+html.dark .p-tag.p-tag-success { background: var(--soft-success) !important; color: #0b2d1f !important; }
+html.dark .p-tag.p-tag-warning { background: var(--soft-warn)   !important; color: #3a2b00 !important; }
+html.dark .p-tag.p-tag-danger  { background: var(--soft-error)  !important; color: #3a0f18 !important; }
+
+/* Overlay de carga en dark */
+html.dark .loading-overlay { background: rgba(0,0,0,.25); }
+
+/* =========================================================
+   DARK SOFT — PrimeNG DataTable / Table
+   ========================================================= */
+html.dark .p-datatable,
+html.dark .p-datatable-wrapper,
+html.dark .p-datatable-table,
+html.dark .p-datatable-thead,
+html.dark .p-datatable-tbody,
+html.dark .p-datatable-tfoot,
+html.dark .p-table,
+html.dark .p-table-wrapper {
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border: 1px solid var(--soft-border) !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+
+/* Wrappers de scroll/cabecera/cuerpo */
+html.dark .p-table table,
+html.dark .p-table .p-table-wrapper,
+html.dark .p-table .p-table-scrollable-wrapper,
+html.dark .p-table .p-table-scrollable-header,
+html.dark .p-table .p-table-scrollable-body,
+html.dark .p-table .p-table-scrollable-footer {
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+}
+
+/* Cabeceras / celdas / bordes */
+html.dark .p-datatable thead > tr > th,
+html.dark .p-table thead > tr > th {
+  background: var(--soft-bg-2) !important;
+  color: var(--soft-text) !important;
+  border-color: var(--soft-border) !important;
+}
+html.dark .p-datatable tbody > tr > td,
+html.dark .p-table tbody > tr > td {
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border-color: var(--soft-border) !important;
+}
+
+/* Hover / zebra */
+html.dark .p-datatable tbody > tr:hover > td,
+html.dark .p-table tbody > tr:hover > td {
+  background: var(--soft-row-hover) !important;
+}
+html.dark .p-datatable tbody > tr:nth-child(odd) > td,
+html.dark .p-table tbody > tr:nth-child(odd) > td {
+  background: var(--soft-card) !important;
+}
+
+/* Paginador (si se usa) */
+html.dark .p-table .p-paginator,
+html.dark .p-datatable .p-paginator {
+  background: var(--soft-card) !important;
+  border-top: 1px solid var(--soft-border) !important;
+  color: var(--soft-text) !important;
+}
+
+/* Colores de estado */
+.warn { color: #f59e0b; } /* ámbar suave */
+.neg  { color: #ff6b6b; } /* rojo suave */
+
+/* Texto explicativo bajo el KPI */
+.kpi-hint { display:block; margin-top:.25rem; opacity:.9; font-weight:500; }

@@ -8,15 +8,15 @@ import { finalize, startWith, switchMap } from 'rxjs/operators';
 
 /* PrimeNG: usar componentes standalone coherentes con el HTML */
 import { Button } from 'primeng/button';
-import { Select } from 'primeng/select';           // ⬅️ reemplaza a Dropdown
-import { DatePicker } from 'primeng/datepicker';   // ⬅️ reemplaza a Calendar
+import { Select } from 'primeng/select';
+import { DatePicker } from 'primeng/datepicker';
 import { InputNumber } from 'primeng/inputnumber';
-import { TableModule } from 'primeng/table';
-import { Tag } from 'primeng/tag';
+import { TableModule } from 'primeng/table'; // Table NO es standalone
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Card } from 'primeng/card';
 import { Panel } from 'primeng/panel';
+import { ProgressSpinner } from 'primeng/progressspinner';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
 /* Servicio + DTOs */
@@ -49,7 +49,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     DatePicker,
     InputNumber,
     TableModule,
-    Tag,
+    ProgressSpinner,
     Toast,
     ConfirmDialog,
 
@@ -62,6 +62,9 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
+  private ms = inject(MessageService);
+  private confirm = inject(ConfirmationService);
+
   constructor(private api: AcquistiService) {}
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
@@ -86,15 +89,21 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   preview: PreviewResponse | null = null;
 
+  // (estos ya no se usan con p-toast, puedes borrarlos si quieres)
   toastMsg = '';
   toastType: 'success' | 'info' | 'error' = 'info';
   toastVisible = false;
   private toastTimer?: any;
 
+  // Tema oscuro
+  isDark = false;
+
+  // ---------------- lifecycle ----------------
   ngOnInit(): void {
     this.refreshSaldosUnifiedOnce();
     this.startUnifiedPolling();
     this.verAgentesActivos();
+    this.initTheme();
 
     this.api.getTitoli().subscribe({
       next: (res) => {
@@ -113,11 +122,39 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.hideToast();
   }
 
+  // ---------------- tema oscuro ----------------
+  private initTheme(): void {
+    const saved = localStorage.getItem('theme'); // 'dark' | 'light' | null
+    if (saved === 'dark' || saved === 'light') {
+      this.isDark = saved === 'dark';
+    } else {
+      // si no hay preferencia guardada, usa la del sistema
+      this.isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    }
+    this.applyThemeClass();
+  }
+
+  toggleDark(): void {
+    this.isDark = !this.isDark;
+    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+    this.applyThemeClass();
+  }
+
+  private applyThemeClass(): void {
+    const root = document.documentElement; // <html>
+    // Clase para el selector del tema
+    root.classList.toggle('dark', this.isDark);
+    // Atributo alternativo que algunas libs consultan
+    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light');
+  }
+
+  // ---------------- helpers UI ----------------
   isTodaySelected(): boolean {
     const d = (this.form.get('dataCompra')?.value || '').trim();
     return !!d && d === this.todayIso();
   }
 
+  // ---------------- acciones ----------------
   doPreview(): void {
     this.error = null;
     const req = this.buildRequest();
@@ -218,6 +255,17 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   }
 
   resetSaldos(): void {
+    this.confirm.confirm({
+      header: 'Reiniciar saldos',
+      message: 'Esto pondrá los saldos a cero. ¿Seguro?',
+      icon: 'pi pi-trash',
+      acceptLabel: 'Sí, reiniciar',
+      rejectLabel: 'Cancelar',
+      accept: () => this._resetSaldosReal(),
+    });
+  }
+
+  private _resetSaldosReal(): void {
     this.error = null;
     this.api.resetSaldos().subscribe({
       next: () => {
@@ -237,33 +285,21 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   confirmarDesdePreview(): void {
     if (!this.preview) return;
-    const req = this.buildRequest();
-    if (!req) return;
-
-    this.loading = true;
-    this.api
-      .conferma(req)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: () => {
-          this.preview = null;
-          this.showToast('Compra confirmada', 'success');
-          this.refreshSaldosUnifiedOnce();
-          this.startUnifiedPolling();
-          this.verAgentesActivos();
-          this.listCmp?.load();
-        },
-        error: (err) => {
-          this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
-        },
-      });
+    this.confirm.confirm({
+      header: 'Confirmar compra',
+      message: '¿Deseas confirmar esta compra?',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Sí, confirmar',
+      rejectLabel: 'Cancelar',
+      accept: () => this.doConferma(),
+    });
   }
 
   cancelarPreview(): void {
     this.preview = null;
   }
 
+  // ---------------- data helpers ----------------
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
 
@@ -309,7 +345,13 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     const imp = Number(v.importoTotale);
     const qta = Number(v.quantitaTotale);
 
-    if (!titolo || !dataIso || !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) || !isFinite(imp) || !isFinite(qta)) {
+    if (
+      !titolo ||
+      !dataIso ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(dataIso) ||
+      !isFinite(imp) ||
+      !isFinite(qta)
+    ) {
       this.error = !dataIso ? 'Fecha inválida.' : 'Formulario inválido';
       return null;
     }
@@ -328,7 +370,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (!this.isTodaySelected()) return;
 
     this.polling = interval(this.pollingMs)
-      .pipe(startWith(0), switchMap(() => this.api.getSaldiAgenti()))
+      .pipe(
+        startWith(0),
+        switchMap(() => this.api.getSaldiAgenti())
+      )
       .subscribe({
         next: (res) => (this.rows = res),
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
@@ -360,19 +405,20 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     emit(err.statusText || err.message || fallback);
   }
 
+  // Toast Prime (MessageService)
   showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
-    this.toastMsg = msg;
-    this.toastType = type;
-    this.toastVisible = true;
-    clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.hideToast(), ms);
+    this.ms.add({
+      severity: type === 'error' ? 'error' : type,
+      summary: type === 'success' ? 'OK' : type === 'error' ? 'Error' : 'Info',
+      detail: msg,
+      life: ms,
+    });
   }
-
   hideToast(): void {
-    this.toastVisible = false;
-    clearTimeout(this.toastTimer);
+    /* no-op: lo maneja p-toast */
   }
 
+  // ---------------- getters extra ----------------
   get saldoTotaleDisponibile(): number {
     return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
   }
@@ -382,5 +428,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     if (tot < 0) return 'neg';
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return imp > tot ? 'warn' : 'ok';
+  }
+
+  diffImporteSaldo(): number {
+    const imp = Number(this.form.get('importoTotale')?.value) || 0;
+    return this.saldoTotaleDisponibile - imp;
   }
 }
