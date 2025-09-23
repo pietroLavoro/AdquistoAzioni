@@ -284,3 +284,25 @@ html.dark .kpi .p-card .p-card-title {
 html.dark .kpi .muted {
   color: #aab4c8;
 }
+
+/* Espaciado entre el texto y la X del p-select */
+.p-select .p-select-clear-icon {
+  margin-left: 0.75rem; /* agrega más espacio a la izquierda */
+  font-size: 1rem;      /* opcional: agrandar la X */
+  opacity: 0.8;         /* opcional: que se vea más clara */
+}
+
+/* También puedes dar más padding al label para evitar que quede apretado */
+.p-select .p-select-label {
+  padding-right: 1.5rem; 
+}
+
+/* más espacio entre la X y la flecha */
+.p-select .p-select-clear-icon {
+  margin-right: 0.5rem; /* separa la X de la flecha */
+}
+
+html.dark .p-select-panel {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
