@@ -1,0 +1,70 @@
+<html>
+<head>
+<title>Agente.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Agente.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">domain</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">jakarta</span><span class="s2">.</span><span class="s1">persistence</span><span class="s2">.*;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+
+<span class="s1">@Entity</span>
+<span class="s1">@Table</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;agente&quot;</span><span class="s2">)</span>
+<span class="s0">public class </span><span class="s1">Agente </span><span class="s2">{</span>
+
+    <span class="s1">@Id</span>
+    <span class="s1">@GeneratedValue</span><span class="s2">(</span><span class="s1">strategy </span><span class="s2">= </span><span class="s1">GenerationType</span><span class="s2">.</span><span class="s1">IDENTITY</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">Long id</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;codice_fiscale&quot;</span><span class="s2">, </span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">, </span><span class="s1">unique </span><span class="s2">= </span><span class="s0">true</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">String codiceFiscale</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">String nome</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">String cognome</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data_nascita&quot;</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">LocalDate dataNascita</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data_cessazione&quot;</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">LocalDate dataCessazione</span><span class="s2">;</span>
+
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data_liquidazione&quot;</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">LocalDate dataLiquidazione</span><span class="s2">;</span>
+
+    <span class="s4">// ---- GETTERS ----</span>
+    <span class="s0">public </span><span class="s1">Long getId</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">id</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">String getCodiceFiscale</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">codiceFiscale</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">String getNome</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">nome</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">String getCognome</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">cognome</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">LocalDate getDataNascita</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">dataNascita</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">LocalDate getDataCessazione</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">dataCessazione</span><span class="s2">; }</span>
+    <span class="s0">public </span><span class="s1">LocalDate getDataLiquidazione</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">dataLiquidazione</span><span class="s2">; }</span>
+
+    <span class="s4">// ---- SETTERS opcionales si los necesitas ----</span>
+    <span class="s0">public void </span><span class="s1">setId</span><span class="s2">(</span><span class="s1">Long id</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">id </span><span class="s2">= </span><span class="s1">id</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setCodiceFiscale</span><span class="s2">(</span><span class="s1">String codiceFiscale</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">codiceFiscale </span><span class="s2">= </span><span class="s1">codiceFiscale</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setNome</span><span class="s2">(</span><span class="s1">String nome</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">nome </span><span class="s2">= </span><span class="s1">nome</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setCognome</span><span class="s2">(</span><span class="s1">String cognome</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">cognome </span><span class="s2">= </span><span class="s1">cognome</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setDataNascita</span><span class="s2">(</span><span class="s1">LocalDate dataNascita</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">dataNascita </span><span class="s2">= </span><span class="s1">dataNascita</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setDataCessazione</span><span class="s2">(</span><span class="s1">LocalDate dataCessazione</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">dataCessazione </span><span class="s2">= </span><span class="s1">dataCessazione</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setDataLiquidazione</span><span class="s2">(</span><span class="s1">LocalDate dataLiquidazione</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">dataLiquidazione </span><span class="s2">= </span><span class="s1">dataLiquidazione</span><span class="s2">; }</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

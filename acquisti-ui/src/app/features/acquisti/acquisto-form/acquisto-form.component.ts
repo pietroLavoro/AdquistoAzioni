@@ -430,6 +430,14 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     return imp > tot ? 'warn' : 'ok';
   }
 
+  get diffLabel(): string {
+  const diff = this.diffImporteSaldo();
+  if (diff > 0) return 'Saldo restante';
+  if (diff === 0) return 'Saldo exacto';
+  return 'Falta';
+}
+
+
   diffImporteSaldo(): number {
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return this.saldoTotaleDisponibile - imp;

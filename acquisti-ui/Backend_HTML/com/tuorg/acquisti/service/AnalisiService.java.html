@@ -1,0 +1,208 @@
+<html>
+<head>
+<title>AnalisiService.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #7a7e85;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #6aab73;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+AnalisiService.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">AgenteSaldoDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">AgentiAttiviDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">SuggerimentoDataDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">domain</span><span class="s2">.</span><span class="s1">Agente</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">domain</span><span class="s2">.</span><span class="s1">Titolo</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">AgenteRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">MovimentoRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">TitoloRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">beans</span><span class="s2">.</span><span class="s1">factory</span><span class="s2">.</span><span class="s1">annotation</span><span class="s2">.</span><span class="s1">Value</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">http</span><span class="s2">.</span><span class="s1">HttpStatus</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">jdbc</span><span class="s2">.</span><span class="s1">core</span><span class="s2">.</span><span class="s1">JdbcTemplate</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">stereotype</span><span class="s2">.</span><span class="s1">Service</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">transaction</span><span class="s2">.</span><span class="s1">annotation</span><span class="s2">.</span><span class="s1">Transactional</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">web</span><span class="s2">.</span><span class="s1">server</span><span class="s2">.</span><span class="s1">ResponseStatusException</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">math</span><span class="s2">.</span><span class="s1">BigDecimal</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">format</span><span class="s2">.</span><span class="s1">DateTimeFormatter</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.*;</span>
+
+<span class="s1">@Service</span>
+<span class="s0">public class </span><span class="s1">AnalisiService </span><span class="s2">{</span>
+
+    <span class="s0">private final </span><span class="s1">TitoloRepository titoloRepo</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">AgenteRepository agenteRepo</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">MovimentoRepository movimentoRepo</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">DominioService dominio</span><span class="s2">; </span><span class="s3">// por si lo usas en otras rutas</span>
+    <span class="s0">private final </span><span class="s1">JdbcTemplate jdbc</span><span class="s2">;</span>
+
+    <span class="s4">/**</span>
+     <span class="s4">* Opcional: fuerza el schema si no quieres usar current_schema()</span>
+     <span class="s4">* (ej. &quot;public&quot;). Si lo dejas vacío, se usa current_schema().</span>
+     <span class="s4">*/</span>
+    <span class="s1">@Value</span><span class="s2">(</span><span class="s5">&quot;${app.db.schema:}&quot;</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">String configuredSchema</span><span class="s2">;</span>
+
+    <span class="s4">/**</span>
+     <span class="s4">* Opcional: fuerza el nombre exacto de la tabla de compras.</span>
+     <span class="s4">* Si está vacío, intentamos detectar una que contenga 'acquisto' o 'acquisti'.</span>
+     <span class="s4">*/</span>
+    <span class="s1">@Value</span><span class="s2">(</span><span class="s5">&quot;${app.purchase-table:}&quot;</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">String configuredPurchaseTable</span><span class="s2">;</span>
+
+    <span class="s0">public </span><span class="s1">AnalisiService</span><span class="s2">(</span><span class="s1">TitoloRepository titoloRepo</span><span class="s2">,</span>
+                          <span class="s1">AgenteRepository agenteRepo</span><span class="s2">,</span>
+                          <span class="s1">MovimentoRepository movimentoRepo</span><span class="s2">,</span>
+                          <span class="s1">DominioService dominio</span><span class="s2">,</span>
+                          <span class="s1">JdbcTemplate jdbc</span><span class="s2">) {</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">titoloRepo </span><span class="s2">= </span><span class="s1">titoloRepo</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">agenteRepo </span><span class="s2">= </span><span class="s1">agenteRepo</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">movimentoRepo </span><span class="s2">= </span><span class="s1">movimentoRepo</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">dominio </span><span class="s2">= </span><span class="s1">dominio</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">jdbc </span><span class="s2">= </span><span class="s1">jdbc</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s3">// ---------- SUGERENCIA DE FECHA ----------</span>
+    <span class="s0">public </span><span class="s1">SuggerimentoDataDTO suggerisciData</span><span class="s2">(</span><span class="s1">String codiceTitolo</span><span class="s2">, </span><span class="s0">int </span><span class="s1">numAgenti</span><span class="s2">) {</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">codiceTitolo </span><span class="s2">== </span><span class="s0">null </span><span class="s2">|| </span><span class="s1">codiceTitolo</span><span class="s2">.</span><span class="s1">isBlank</span><span class="s2">()) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s5">&quot;codiceTitolo obbligatorio&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">numAgenti </span><span class="s2">&lt; </span><span class="s6">1</span><span class="s2">) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s5">&quot;numAgenti deve essere &gt;= 1&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+
+        <span class="s1">Titolo titolo </span><span class="s2">= </span><span class="s1">titoloRepo</span><span class="s2">.</span><span class="s1">findByCodice</span><span class="s2">(</span><span class="s1">codiceTitolo</span><span class="s2">)</span>
+                <span class="s2">.</span><span class="s1">orElseThrow</span><span class="s2">(() </span><span class="s1">-&gt; </span><span class="s0">new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span>
+                        <span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s5">&quot;Titolo '&quot; </span><span class="s2">+ </span><span class="s1">codiceTitolo </span><span class="s2">+ </span><span class="s5">&quot;' non trovato&quot;</span><span class="s2">));</span>
+
+        <span class="s1">LocalDate emissione </span><span class="s2">= (</span><span class="s1">titolo</span><span class="s2">.</span><span class="s1">getDataEmissione</span><span class="s2">() != </span><span class="s0">null</span><span class="s2">)</span>
+                <span class="s2">? </span><span class="s1">titolo</span><span class="s2">.</span><span class="s1">getDataEmissione</span><span class="s2">()</span>
+                <span class="s2">: </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">now</span><span class="s2">();</span>
+
+        <span class="s1">LocalDate oggi </span><span class="s2">= </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">now</span><span class="s2">();</span>
+        <span class="s1">LocalDate suggerita </span><span class="s2">= (</span><span class="s1">oggi</span><span class="s2">.</span><span class="s1">isBefore</span><span class="s2">(</span><span class="s1">emissione</span><span class="s2">)) ? </span><span class="s1">emissione </span><span class="s2">: </span><span class="s1">oggi</span><span class="s2">;</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">numAgenti </span><span class="s2">&gt;= </span><span class="s6">2</span><span class="s2">) </span><span class="s1">suggerita </span><span class="s2">= </span><span class="s1">suggerita</span><span class="s2">.</span><span class="s1">plusDays</span><span class="s2">(</span><span class="s6">1</span><span class="s2">);</span>
+
+        <span class="s1">DateTimeFormatter out </span><span class="s2">= </span><span class="s1">DateTimeFormatter</span><span class="s2">.</span><span class="s1">ofPattern</span><span class="s2">(</span><span class="s5">&quot;dd-MM-yyyy&quot;</span><span class="s2">);</span>
+        <span class="s0">return new </span><span class="s1">SuggerimentoDataDTO</span><span class="s2">(</span><span class="s1">suggerita</span><span class="s2">.</span><span class="s1">format</span><span class="s2">(</span><span class="s1">out</span><span class="s2">));</span>
+    <span class="s2">}</span>
+
+    <span class="s3">// ---------- SALDOS A LA FECHA ----------</span>
+    <span class="s0">public </span><span class="s1">List</span><span class="s2">&lt;</span><span class="s1">AgenteSaldoDTO</span><span class="s2">&gt; </span><span class="s1">saldiTuttiAllaData</span><span class="s2">(</span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+        <span class="s1">List</span><span class="s2">&lt;</span><span class="s1">AgenteSaldoDTO</span><span class="s2">&gt; </span><span class="s1">result </span><span class="s2">= </span><span class="s0">new </span><span class="s1">ArrayList</span><span class="s2">&lt;&gt;();</span>
+        <span class="s1">List</span><span class="s2">&lt;</span><span class="s1">Agente</span><span class="s2">&gt; </span><span class="s1">tutti </span><span class="s2">= </span><span class="s1">agenteRepo</span><span class="s2">.</span><span class="s1">findAllByOrderByIdAsc</span><span class="s2">();</span>
+        <span class="s0">for </span><span class="s2">(</span><span class="s1">Agente a </span><span class="s2">: </span><span class="s1">tutti</span><span class="s2">) {</span>
+            <span class="s1">BigDecimal saldo </span><span class="s2">= </span><span class="s1">movimentoRepo</span><span class="s2">.</span><span class="s1">saldoAgenteFinoA</span><span class="s2">(</span><span class="s1">a</span><span class="s2">.</span><span class="s1">getId</span><span class="s2">(), </span><span class="s1">data</span><span class="s2">);</span>
+            <span class="s1">result</span><span class="s2">.</span><span class="s1">add</span><span class="s2">(</span><span class="s0">new </span><span class="s1">AgenteSaldoDTO</span><span class="s2">(</span><span class="s1">a</span><span class="s2">.</span><span class="s1">getId</span><span class="s2">(), </span><span class="s1">a</span><span class="s2">.</span><span class="s1">getCodiceFiscale</span><span class="s2">(), </span><span class="s1">saldo</span><span class="s2">));</span>
+        <span class="s2">}</span>
+        <span class="s1">result</span><span class="s2">.</span><span class="s1">sort</span><span class="s2">(</span><span class="s1">Comparator</span><span class="s2">.</span><span class="s1">comparing</span><span class="s2">(</span><span class="s1">AgenteSaldoDTO::id</span><span class="s2">));</span>
+        <span class="s0">return </span><span class="s1">result</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s3">// ---------- RESET (PostgreSQL robusto) ----------</span>
+    <span class="s1">@Transactional</span>
+    <span class="s0">public void </span><span class="s1">resetTestData</span><span class="s2">() {</span>
+        <span class="s3">// 1) Vacía SOLO las tablas que existen y reinicia sus secuencias (PostgreSQL)</span>
+        <span class="s1">jdbc</span><span class="s2">.</span><span class="s1">execute</span><span class="s2">(</span>
+                <span class="s5">&quot;TRUNCATE TABLE &quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;movimento_titolo_agente, &quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;movimento_titolo, &quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;movimento &quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;RESTART IDENTITY CASCADE&quot;</span>
+        <span class="s2">);</span>
+
+        <span class="s3">// 2) Re-carga un seed mínimo para pruebas (ajústalo a tu caso real)</span>
+        <span class="s1">jdbc</span><span class="s2">.</span><span class="s1">update</span><span class="s2">(</span>
+                <span class="s5">&quot;INSERT INTO movimento (data, importo, id_agente) VALUES &quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;('2025-01-01', 5000.00, 1),&quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;('2025-01-01', 2000.00, 2),&quot; </span><span class="s2">+</span>
+                        <span class="s5">&quot;('2025-01-01', 1000.00, 3)&quot;</span>
+        <span class="s2">);</span>
+    <span class="s2">}</span>
+
+
+    <span class="s0">private </span><span class="s1">String resolveSchema</span><span class="s2">() {</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">configuredSchema </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">&amp;&amp; !</span><span class="s1">configuredSchema</span><span class="s2">.</span><span class="s1">isBlank</span><span class="s2">()) {</span>
+            <span class="s0">return </span><span class="s1">configuredSchema</span><span class="s2">.</span><span class="s1">trim</span><span class="s2">();</span>
+        <span class="s2">}</span>
+        <span class="s3">// Usa el schema activo de la conexión</span>
+        <span class="s0">return </span><span class="s1">jdbc</span><span class="s2">.</span><span class="s1">queryForObject</span><span class="s2">(</span><span class="s5">&quot;SELECT current_schema()&quot;</span><span class="s2">, </span><span class="s1">String</span><span class="s2">.</span><span class="s0">class</span><span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s0">private </span><span class="s1">String resolvePurchaseTable</span><span class="s2">(</span><span class="s1">String schema</span><span class="s2">) {</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">configuredPurchaseTable </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">&amp;&amp; !</span><span class="s1">configuredPurchaseTable</span><span class="s2">.</span><span class="s1">isBlank</span><span class="s2">()) {</span>
+            <span class="s0">return </span><span class="s1">configuredPurchaseTable</span><span class="s2">.</span><span class="s1">trim</span><span class="s2">();</span>
+        <span class="s2">}</span>
+        <span class="s3">// Busca cualquier tabla que contenga 'acquisto' o 'acquisti'</span>
+        <span class="s1">List</span><span class="s2">&lt;</span><span class="s1">String</span><span class="s2">&gt; </span><span class="s1">candidates </span><span class="s2">= </span><span class="s1">jdbc</span><span class="s2">.</span><span class="s1">queryForList</span><span class="s2">(</span><span class="s5">&quot;&quot;&quot; 
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = ? AND 
+                  (table_name ILIKE '%acquisto%' OR table_name ILIKE '%acquisti%') 
+            ORDER BY table_name 
+        &quot;&quot;&quot;</span><span class="s2">, </span><span class="s1">String</span><span class="s2">.</span><span class="s0">class</span><span class="s2">, </span><span class="s1">schema</span><span class="s2">);</span>
+
+        <span class="s0">if </span><span class="s2">(!</span><span class="s1">candidates</span><span class="s2">.</span><span class="s1">isEmpty</span><span class="s2">()) {</span>
+            <span class="s3">// Elige la más “obvia”</span>
+            <span class="s0">for </span><span class="s2">(</span><span class="s1">String c </span><span class="s2">: </span><span class="s1">candidates</span><span class="s2">) {</span>
+                <span class="s0">if </span><span class="s2">(</span><span class="s1">c</span><span class="s2">.</span><span class="s1">equalsIgnoreCase</span><span class="s2">(</span><span class="s5">&quot;acquisti&quot;</span><span class="s2">) || </span><span class="s1">c</span><span class="s2">.</span><span class="s1">equalsIgnoreCase</span><span class="s2">(</span><span class="s5">&quot;acquisto&quot;</span><span class="s2">)) {</span>
+                    <span class="s0">return </span><span class="s1">c</span><span class="s2">;</span>
+                <span class="s2">}</span>
+            <span class="s2">}</span>
+            <span class="s3">// si no hay exacta, devuelve la primera candidata</span>
+            <span class="s0">return </span><span class="s1">candidates</span><span class="s2">.</span><span class="s1">get</span><span class="s2">(</span><span class="s6">0</span><span class="s2">);</span>
+        <span class="s2">}</span>
+
+        <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span>
+                <span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">INTERNAL_SERVER_ERROR</span><span class="s2">,</span>
+                <span class="s5">&quot;No se encontró la tabla de compras en el schema '&quot; </span><span class="s2">+ </span><span class="s1">schema </span><span class="s2">+</span>
+                        <span class="s5">&quot;'. Configura 'app.purchase-table' o renombra la tabla para contener 'acquisto'.&quot;</span><span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s0">private boolean </span><span class="s1">tableExists</span><span class="s2">(</span><span class="s1">String schema</span><span class="s2">, </span><span class="s1">String table</span><span class="s2">) {</span>
+        <span class="s1">Integer n </span><span class="s2">= </span><span class="s1">jdbc</span><span class="s2">.</span><span class="s1">queryForObject</span><span class="s2">(</span><span class="s5">&quot;&quot;&quot; 
+            SELECT COUNT(*) FROM information_schema.tables 
+            WHERE table_schema = ? AND table_name = ? 
+        &quot;&quot;&quot;</span><span class="s2">, </span><span class="s1">Integer</span><span class="s2">.</span><span class="s0">class</span><span class="s2">, </span><span class="s1">schema</span><span class="s2">, </span><span class="s1">table</span><span class="s2">);</span>
+        <span class="s0">return </span><span class="s1">n </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">&amp;&amp; </span><span class="s1">n </span><span class="s2">&gt; </span><span class="s6">0</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s0">private </span><span class="s1">String qualified</span><span class="s2">(</span><span class="s1">String schema</span><span class="s2">, </span><span class="s1">String table</span><span class="s2">) {</span>
+        <span class="s3">// Cuota nombres por si contienen mayúsculas / caracteres especiales</span>
+        <span class="s0">return </span><span class="s5">&quot;</span><span class="s0">\&quot;</span><span class="s5">&quot; </span><span class="s2">+ </span><span class="s1">schema </span><span class="s2">+ </span><span class="s5">&quot;</span><span class="s0">\&quot;</span><span class="s5">.</span><span class="s0">\&quot;</span><span class="s5">&quot; </span><span class="s2">+ </span><span class="s1">table </span><span class="s2">+ </span><span class="s5">&quot;</span><span class="s0">\&quot;</span><span class="s5">&quot;</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s3">// ---------- AGENTES ACTIVOS ----------</span>
+    <span class="s0">public </span><span class="s1">AgentiAttiviDTO agentiAttiviAllaData</span><span class="s2">(</span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+        <span class="s1">List</span><span class="s2">&lt;</span><span class="s1">AgenteSaldoDTO</span><span class="s2">&gt; </span><span class="s1">agenti </span><span class="s2">= </span><span class="s1">saldiTuttiAllaData</span><span class="s2">(</span><span class="s1">data</span><span class="s2">);</span>
+        <span class="s0">int </span><span class="s1">numAttivi </span><span class="s2">= </span><span class="s6">0</span><span class="s2">;</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">agenti </span><span class="s2">!= </span><span class="s0">null</span><span class="s2">) {</span>
+            <span class="s0">for </span><span class="s2">(</span><span class="s1">AgenteSaldoDTO a </span><span class="s2">: </span><span class="s1">agenti</span><span class="s2">) {</span>
+                <span class="s0">if </span><span class="s2">(</span><span class="s1">a</span><span class="s2">.</span><span class="s1">saldoDisponibile</span><span class="s2">() != </span><span class="s0">null </span><span class="s2">&amp;&amp; </span><span class="s1">a</span><span class="s2">.</span><span class="s1">saldoDisponibile</span><span class="s2">().</span><span class="s1">compareTo</span><span class="s2">(</span><span class="s1">BigDecimal</span><span class="s2">.</span><span class="s1">ZERO</span><span class="s2">) &gt; </span><span class="s6">0</span><span class="s2">) {</span>
+                    <span class="s1">numAttivi</span><span class="s2">++;</span>
+                <span class="s2">}</span>
+            <span class="s2">}</span>
+        <span class="s2">}</span>
+        <span class="s0">return new </span><span class="s1">AgentiAttiviDTO</span><span class="s2">(</span>
+                <span class="s2">(</span><span class="s1">data </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">? </span><span class="s1">data</span><span class="s2">.</span><span class="s1">toString</span><span class="s2">() : </span><span class="s0">null</span><span class="s2">),</span>
+                <span class="s1">numAttivi</span><span class="s2">,</span>
+                <span class="s1">agenti</span>
+        <span class="s2">);</span>
+    <span class="s2">}</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

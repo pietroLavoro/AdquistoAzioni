@@ -1,0 +1,66 @@
+<html>
+<head>
+<title>DominioService.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #5f826b; font-style: italic;}
+.s4 { color: #7a7e85;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+DominioService.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">domain</span><span class="s2">.</span><span class="s1">Agente</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">AgenteRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">MovimentoRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">stereotype</span><span class="s2">.</span><span class="s1">Service</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">math</span><span class="s2">.</span><span class="s1">BigDecimal</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.</span><span class="s1">LinkedHashMap</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.</span><span class="s1">List</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.</span><span class="s1">Map</span><span class="s2">;</span>
+
+<span class="s1">@Service</span>
+<span class="s0">public class </span><span class="s1">DominioService </span><span class="s2">{</span>
+
+    <span class="s0">private final </span><span class="s1">AgenteRepository agenteRepo</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">MovimentoRepository movimentoRepo</span><span class="s2">;</span>
+
+    <span class="s0">public </span><span class="s1">DominioService</span><span class="s2">(</span><span class="s1">AgenteRepository agenteRepo</span><span class="s2">, </span><span class="s1">MovimentoRepository movimentoRepo</span><span class="s2">) {</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">agenteRepo </span><span class="s2">= </span><span class="s1">agenteRepo</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">movimentoRepo </span><span class="s2">= </span><span class="s1">movimentoRepo</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s3">/** Devuelve los agentes activos a la fecha dada. */</span>
+    <span class="s0">public </span><span class="s1">List</span><span class="s2">&lt;</span><span class="s1">Agente</span><span class="s2">&gt; </span><span class="s1">agentesAttiviAlla</span><span class="s2">(</span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+        <span class="s0">return </span><span class="s1">agenteRepo</span><span class="s2">.</span><span class="s1">findAttiviAlla</span><span class="s2">(</span><span class="s1">data</span><span class="s2">);           </span><span class="s4">// &lt;--- nombre correcto</span>
+    <span class="s2">}</span>
+
+    <span class="s3">/** Saldo de un agente hasta la fecha (incluida). */</span>
+    <span class="s0">public </span><span class="s1">BigDecimal saldoAgenteFinoA</span><span class="s2">(</span><span class="s1">Long agenteId</span><span class="s2">, </span><span class="s1">LocalDate finoA</span><span class="s2">) {</span>
+        <span class="s0">return </span><span class="s1">movimentoRepo</span><span class="s2">.</span><span class="s1">saldoAgenteFinoA</span><span class="s2">(</span><span class="s1">agenteId</span><span class="s2">, </span><span class="s1">finoA</span><span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s3">/** Mapa agenteId -&gt; saldo (para todos los activos a la fecha). */</span>
+    <span class="s0">public </span><span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">Long</span><span class="s2">, </span><span class="s1">BigDecimal</span><span class="s2">&gt; </span><span class="s1">saldiAgentiAttiviAlla</span><span class="s2">(</span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+        <span class="s1">List</span><span class="s2">&lt;</span><span class="s1">Agente</span><span class="s2">&gt; </span><span class="s1">attivi </span><span class="s2">= </span><span class="s1">agenteRepo</span><span class="s2">.</span><span class="s1">findAttiviAlla</span><span class="s2">(</span><span class="s1">data</span><span class="s2">);   </span><span class="s4">// &lt;--- nombre correcto</span>
+        <span class="s1">Map</span><span class="s2">&lt;</span><span class="s1">Long</span><span class="s2">, </span><span class="s1">BigDecimal</span><span class="s2">&gt; </span><span class="s1">saldi </span><span class="s2">= </span><span class="s0">new </span><span class="s1">LinkedHashMap</span><span class="s2">&lt;&gt;();</span>
+        <span class="s0">for </span><span class="s2">(</span><span class="s1">Agente a </span><span class="s2">: </span><span class="s1">attivi</span><span class="s2">) {</span>
+            <span class="s1">BigDecimal saldo </span><span class="s2">= </span><span class="s1">movimentoRepo</span><span class="s2">.</span><span class="s1">saldoAgenteFinoA</span><span class="s2">(</span><span class="s1">a</span><span class="s2">.</span><span class="s1">getId</span><span class="s2">(), </span><span class="s1">data</span><span class="s2">);</span>
+            <span class="s1">saldi</span><span class="s2">.</span><span class="s1">put</span><span class="s2">(</span><span class="s1">a</span><span class="s2">.</span><span class="s1">getId</span><span class="s2">(), </span><span class="s1">saldo</span><span class="s2">);</span>
+        <span class="s2">}</span>
+        <span class="s0">return </span><span class="s1">saldi</span><span class="s2">;</span>
+    <span class="s2">}</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

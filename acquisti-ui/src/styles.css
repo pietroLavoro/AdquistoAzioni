@@ -265,3 +265,7 @@ html.dark .p-datatable .p-paginator {
 
 /* Texto explicativo bajo el KPI */
 .kpi-hint { display:block; margin-top:.25rem; opacity:.9; font-weight:500; }
+
+.kpi-value.pos { color: #2ecc71; }   /* verde */
+.kpi-value.zero { color: #f1c40f; }  /* ámbar */
+.kpi-value.neg { color: #e74c3c; }   /* rojo */

@@ -1,0 +1,61 @@
+<html>
+<head>
+<title>Movimento.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #7a7e85;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Movimento.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">domain</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">jakarta</span><span class="s2">.</span><span class="s1">persistence</span><span class="s2">.*;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">math</span><span class="s2">.</span><span class="s1">BigDecimal</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+
+<span class="s1">@Entity</span>
+<span class="s1">@Table</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;movimento&quot;</span><span class="s2">)</span>
+<span class="s0">public class </span><span class="s1">Movimento </span><span class="s2">{</span>
+
+    <span class="s1">@Id</span>
+    <span class="s1">@GeneratedValue</span><span class="s2">(</span><span class="s1">strategy </span><span class="s2">= </span><span class="s1">GenerationType</span><span class="s2">.</span><span class="s1">IDENTITY</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">Long id</span><span class="s2">;</span>
+
+    <span class="s4">// Fecha del movimiento contable</span>
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data&quot;</span><span class="s2">, </span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">LocalDate data</span><span class="s2">;</span>
+
+    <span class="s4">// Importe del movimiento (cargo negativo)</span>
+    <span class="s1">@Column</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;importo&quot;</span><span class="s2">, </span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">, </span><span class="s1">precision </span><span class="s2">= </span><span class="s5">15</span><span class="s2">, </span><span class="s1">scale </span><span class="s2">= </span><span class="s5">2</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">BigDecimal importo</span><span class="s2">;</span>
+
+    <span class="s4">// Agente al que pertenece el movimiento</span>
+    <span class="s1">@ManyToOne</span><span class="s2">(</span><span class="s1">optional </span><span class="s2">= </span><span class="s0">false</span><span class="s2">, </span><span class="s1">fetch </span><span class="s2">= </span><span class="s1">FetchType</span><span class="s2">.</span><span class="s1">LAZY</span><span class="s2">)</span>
+    <span class="s1">@JoinColumn</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;id_agente&quot;</span><span class="s2">, </span><span class="s1">nullable </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+    <span class="s0">private </span><span class="s1">Agente agente</span><span class="s2">;</span>
+
+    <span class="s4">// ---- GETTERS/SETTERS que usa el service ----</span>
+    <span class="s0">public </span><span class="s1">Long getId</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">id</span><span class="s2">; }</span>
+
+    <span class="s0">public </span><span class="s1">LocalDate getData</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">data</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setData</span><span class="s2">(</span><span class="s1">LocalDate data</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">data </span><span class="s2">= </span><span class="s1">data</span><span class="s2">; }</span>
+
+    <span class="s0">public </span><span class="s1">BigDecimal getImporto</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">importo</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setImporto</span><span class="s2">(</span><span class="s1">BigDecimal importo</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">importo </span><span class="s2">= </span><span class="s1">importo</span><span class="s2">; }</span>
+
+    <span class="s0">public </span><span class="s1">Agente getAgente</span><span class="s2">() { </span><span class="s0">return </span><span class="s1">agente</span><span class="s2">; }</span>
+    <span class="s0">public void </span><span class="s1">setAgente</span><span class="s2">(</span><span class="s1">Agente agente</span><span class="s2">) { </span><span class="s0">this</span><span class="s2">.</span><span class="s1">agente </span><span class="s2">= </span><span class="s1">agente</span><span class="s2">; }</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

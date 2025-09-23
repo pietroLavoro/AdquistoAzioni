@@ -1,0 +1,78 @@
+<html>
+<head>
+<title>V1__init_schema.sql</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #7a7e85;}
+.s1 { color: #bcbec4;}
+.s2 { color: #cf8e6d;}
+.s3 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+V1__init_schema.sql</font>
+</center></td></tr></table>
+<pre><span class="s0">-- ===============================</span>
+<span class="s0">-- V1: Esquema base &quot;Acquisto Azioni&quot;</span>
+<span class="s0">-- ===============================</span>
+
+<span class="s0">-- AGENTE</span>
+<span class="s2">CREATE TABLE </span><span class="s1">IF </span><span class="s2">NOT EXISTS </span><span class="s1">agente (</span>
+  <span class="s1">id                BIGSERIAL </span><span class="s2">PRIMARY KEY</span><span class="s1">,</span>
+  <span class="s1">codice_fiscale    </span><span class="s2">VARCHAR</span><span class="s1">(</span><span class="s3">32</span><span class="s1">)  </span><span class="s2">NOT NULL UNIQUE</span><span class="s1">,</span>
+  <span class="s1">nome              </span><span class="s2">VARCHAR</span><span class="s1">(</span><span class="s3">80</span><span class="s1">)  </span><span class="s2">NOT NULL</span><span class="s1">,</span>
+  <span class="s1">cognome           </span><span class="s2">VARCHAR</span><span class="s1">(</span><span class="s3">80</span><span class="s1">)  </span><span class="s2">NOT NULL</span><span class="s1">,</span>
+  <span class="s1">data_nascita      </span><span class="s2">DATE         NOT NULL</span><span class="s1">,</span>
+  <span class="s1">data_cessazione   </span><span class="s2">DATE         NULL</span><span class="s1">,</span>
+  <span class="s1">data_liquidazione </span><span class="s2">DATE         NULL</span>
+<span class="s1">);</span>
+
+<span class="s0">-- TITOLO</span>
+<span class="s2">CREATE TABLE </span><span class="s1">IF </span><span class="s2">NOT EXISTS </span><span class="s1">titolo (</span>
+  <span class="s1">id             BIGSERIAL </span><span class="s2">PRIMARY KEY</span><span class="s1">,</span>
+  <span class="s1">codice         </span><span class="s2">VARCHAR</span><span class="s1">(</span><span class="s3">64</span><span class="s1">)   </span><span class="s2">NOT NULL UNIQUE</span><span class="s1">,</span>
+  <span class="s1">descrizione    </span><span class="s2">VARCHAR</span><span class="s1">(</span><span class="s3">255</span><span class="s1">)  </span><span class="s2">NOT NULL</span><span class="s1">,</span>
+  <span class="s1">data_emissione </span><span class="s2">DATE          NOT NULL</span>
+<span class="s1">);</span>
+
+<span class="s0">-- MOVIMENTO (saldos de agentes)</span>
+<span class="s2">CREATE TABLE </span><span class="s1">IF </span><span class="s2">NOT EXISTS </span><span class="s1">movimento (</span>
+  <span class="s1">id        BIGSERIAL </span><span class="s2">PRIMARY KEY</span><span class="s1">,</span>
+  <span class="s1">data      </span><span class="s2">DATE            NOT NULL</span><span class="s1">,</span>
+  <span class="s1">importo   </span><span class="s2">NUMERIC</span><span class="s1">(</span><span class="s3">15</span><span class="s1">,</span><span class="s3">2</span><span class="s1">)   </span><span class="s2">NOT NULL</span><span class="s1">,</span>
+  <span class="s1">id_agente BIGINT          </span><span class="s2">NOT NULL REFERENCES </span><span class="s1">agente(id) </span><span class="s2">ON UPDATE CASCADE ON DELETE RESTRICT</span>
+<span class="s1">);</span>
+<span class="s2">CREATE </span><span class="s1">INDEX IF </span><span class="s2">NOT EXISTS </span><span class="s1">idx_movimento_agente_data </span><span class="s2">ON </span><span class="s1">movimento (id_agente, data);</span>
+
+<span class="s0">-- MOVIMENTO_TITOLO (compra total de un título)</span>
+<span class="s2">CREATE TABLE </span><span class="s1">IF </span><span class="s2">NOT EXISTS </span><span class="s1">movimento_titolo (</span>
+  <span class="s1">id                BIGSERIAL </span><span class="s2">PRIMARY KEY</span><span class="s1">,</span>
+  <span class="s1">id_titolo         BIGINT         </span><span class="s2">NOT NULL REFERENCES </span><span class="s1">titolo(id) </span><span class="s2">ON UPDATE CASCADE ON DELETE RESTRICT</span><span class="s1">,</span>
+  <span class="s1">data_investimento </span><span class="s2">DATE           NOT NULL</span><span class="s1">,  </span><span class="s0">-- fecha de compra</span>
+  <span class="s1">quantita          </span><span class="s2">INTEGER        NOT NULL</span><span class="s1">,</span>
+  <span class="s1">importo_acquisto  </span><span class="s2">NUMERIC</span><span class="s1">(</span><span class="s3">15</span><span class="s1">,</span><span class="s3">2</span><span class="s1">)  </span><span class="s2">NOT NULL</span><span class="s1">,</span>
+  <span class="s2">CONSTRAINT </span><span class="s1">chk_quantita_pos     </span><span class="s2">CHECK </span><span class="s1">(quantita &gt; </span><span class="s3">0</span><span class="s1">),</span>
+  <span class="s2">CONSTRAINT </span><span class="s1">chk_importo_pos      </span><span class="s2">CHECK </span><span class="s1">(importo_acquisto &gt; </span><span class="s3">0</span><span class="s1">)</span>
+<span class="s1">);</span>
+<span class="s2">CREATE </span><span class="s1">INDEX IF </span><span class="s2">NOT EXISTS </span><span class="s1">idx_movtitolo_titolo_data </span><span class="s2">ON </span><span class="s1">movimento_titolo (id_titolo, data_investimento);</span>
+
+<span class="s0">-- MOVIMENTO_TITOLO_AGENTE (reparto por agente)</span>
+<span class="s2">CREATE TABLE </span><span class="s1">IF </span><span class="s2">NOT EXISTS </span><span class="s1">movimento_titolo_agente (</span>
+  <span class="s1">id                 BIGSERIAL </span><span class="s2">PRIMARY KEY</span><span class="s1">,</span>
+  <span class="s1">id_movimento_titolo BIGINT        </span><span class="s2">NOT NULL REFERENCES </span><span class="s1">movimento_titolo(id) </span><span class="s2">ON UPDATE CASCADE ON DELETE CASCADE</span><span class="s1">,</span>
+  <span class="s1">id_agente          BIGINT         </span><span class="s2">NOT NULL REFERENCES </span><span class="s1">agente(id) </span><span class="s2">ON UPDATE CASCADE ON DELETE RESTRICT</span><span class="s1">,</span>
+  <span class="s1">quantita           </span><span class="s2">INTEGER        NOT NULL DEFAULT </span><span class="s3">0</span><span class="s1">,</span>
+  <span class="s1">id_movimento       BIGINT         </span><span class="s2">NULL  REFERENCES </span><span class="s1">movimento(id) </span><span class="s2">ON UPDATE CASCADE ON DELETE SET NULL</span><span class="s1">,</span>
+  <span class="s1">importo_acquisto   </span><span class="s2">NUMERIC</span><span class="s1">(</span><span class="s3">15</span><span class="s1">,</span><span class="s3">2</span><span class="s1">)  </span><span class="s2">NOT NULL DEFAULT </span><span class="s3">0</span><span class="s1">,</span>
+  <span class="s2">CONSTRAINT </span><span class="s1">chk_quantita_nonneg  </span><span class="s2">CHECK </span><span class="s1">(quantita &gt;= </span><span class="s3">0</span><span class="s1">),</span>
+  <span class="s2">CONSTRAINT </span><span class="s1">chk_importo_nonneg   </span><span class="s2">CHECK </span><span class="s1">(importo_acquisto &gt;= </span><span class="s3">0</span><span class="s1">),</span>
+  <span class="s2">CONSTRAINT </span><span class="s1">uq_movtitolo_agente </span><span class="s2">UNIQUE </span><span class="s1">(id_movimento_titolo, id_agente)</span>
+<span class="s1">);</span>
+<span class="s2">CREATE </span><span class="s1">INDEX IF </span><span class="s2">NOT EXISTS </span><span class="s1">idx_mta_movtitolo </span><span class="s2">ON </span><span class="s1">movimento_titolo_agente (id_movimento_titolo);</span>
+<span class="s2">CREATE </span><span class="s1">INDEX IF </span><span class="s2">NOT EXISTS </span><span class="s1">idx_mta_agente     </span><span class="s2">ON </span><span class="s1">movimento_titolo_agente (id_agente);</span>
+</pre>
+</body>
+</html>

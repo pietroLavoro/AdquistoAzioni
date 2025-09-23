@@ -1,0 +1,99 @@
+<html>
+<head>
+<title>AnalisiController.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #5f826b; font-style: italic;}
+.s5 { color: #7a7e85;}
+.s6 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+AnalisiController.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">.</span><span class="s1">AnalisiService</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">AgenteSaldoDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">AgentiAttiviDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">.</span><span class="s1">SuggerimentoDataDTO</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">format</span><span class="s2">.</span><span class="s1">annotation</span><span class="s2">.</span><span class="s1">DateTimeFormat</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">http</span><span class="s2">.</span><span class="s1">HttpStatus</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">web</span><span class="s2">.</span><span class="s1">bind</span><span class="s2">.</span><span class="s1">annotation</span><span class="s2">.*;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">web</span><span class="s2">.</span><span class="s1">server</span><span class="s2">.</span><span class="s1">ResponseStatusException</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.</span><span class="s1">List</span><span class="s2">;</span>
+
+<span class="s1">@RestController</span>
+<span class="s1">@RequestMapping</span><span class="s2">(</span><span class="s3">&quot;/api/analisi&quot;</span><span class="s2">)</span>
+<span class="s0">public class </span><span class="s1">AnalisiController </span><span class="s2">{</span>
+
+    <span class="s0">private final </span><span class="s1">AnalisiService analisi</span><span class="s2">;</span>
+
+    <span class="s0">public </span><span class="s1">AnalisiController</span><span class="s2">(</span><span class="s1">AnalisiService analisi</span><span class="s2">) {</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">analisi </span><span class="s2">= </span><span class="s1">analisi</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s4">/** Saldos de TODOS los agentes a la fecha (si no se pasa, hoy) */</span>
+    <span class="s1">@GetMapping</span><span class="s2">(</span><span class="s3">&quot;/saldi&quot;</span><span class="s2">)</span>
+    <span class="s0">public </span><span class="s1">List</span><span class="s2">&lt;</span><span class="s1">AgenteSaldoDTO</span><span class="s2">&gt; </span><span class="s1">saldiAllaData</span><span class="s2">(</span>
+            <span class="s1">@RequestParam</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data&quot;</span><span class="s2">, </span><span class="s1">required </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+            <span class="s1">@DateTimeFormat</span><span class="s2">(</span><span class="s1">iso </span><span class="s2">= </span><span class="s1">DateTimeFormat</span><span class="s2">.</span><span class="s1">ISO</span><span class="s2">.</span><span class="s1">DATE</span><span class="s2">) </span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+
+        <span class="s1">LocalDate d </span><span class="s2">= (</span><span class="s1">data </span><span class="s2">!= </span><span class="s0">null</span><span class="s2">) ? </span><span class="s1">data </span><span class="s2">: </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">now</span><span class="s2">();</span>
+        <span class="s0">return </span><span class="s1">analisi</span><span class="s2">.</span><span class="s1">saldiTuttiAllaData</span><span class="s2">(</span><span class="s1">d</span><span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s4">/**</span>
+     <span class="s4">* Sugerir una fecha de compra según el título y #agentes.</span>
+     <span class="s4">* Acepta 'codiceTitolo' (o 'codice' por compatibilidad) y 'numAgenti' (&gt;=1).</span>
+     <span class="s4">* Devuelve la fecha en formato dd-MM-yyyy (la conversión la hace el service).</span>
+     <span class="s4">*/</span>
+    <span class="s1">@GetMapping</span><span class="s2">(</span><span class="s3">&quot;/suggerisci-data&quot;</span><span class="s2">)</span>
+    <span class="s0">public </span><span class="s1">SuggerimentoDataDTO suggerisciData</span><span class="s2">(</span>
+            <span class="s1">@RequestParam</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;codiceTitolo&quot;</span><span class="s2">, </span><span class="s1">required </span><span class="s2">= </span><span class="s0">false</span><span class="s2">) </span><span class="s1">String codiceTitolo</span><span class="s2">,</span>
+            <span class="s1">@RequestParam</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;codice&quot;</span><span class="s2">, </span><span class="s1">required </span><span class="s2">= </span><span class="s0">false</span><span class="s2">) </span><span class="s1">String codice</span><span class="s2">,</span>
+            <span class="s1">@RequestParam</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;numAgenti&quot;</span><span class="s2">, </span><span class="s1">required </span><span class="s2">= </span><span class="s0">false</span><span class="s2">) </span><span class="s1">Integer numAgenti</span><span class="s2">) {</span>
+
+        <span class="s5">// Normaliza el código del título admitiendo ambos nombres de parámetro</span>
+        <span class="s1">String codiceEffettivo </span><span class="s2">= (</span><span class="s1">codiceTitolo </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">&amp;&amp; !</span><span class="s1">codiceTitolo</span><span class="s2">.</span><span class="s1">isBlank</span><span class="s2">())</span>
+                <span class="s2">? </span><span class="s1">codiceTitolo</span>
+                <span class="s2">: (</span><span class="s1">codice </span><span class="s2">!= </span><span class="s0">null </span><span class="s2">? </span><span class="s1">codice </span><span class="s2">: </span><span class="s0">null</span><span class="s2">);</span>
+
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">codiceEffettivo </span><span class="s2">== </span><span class="s0">null </span><span class="s2">|| </span><span class="s1">codiceEffettivo</span><span class="s2">.</span><span class="s1">isBlank</span><span class="s2">()) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s3">&quot;codiceTitolo obbligatorio&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">numAgenti </span><span class="s2">== </span><span class="s0">null </span><span class="s2">|| </span><span class="s1">numAgenti </span><span class="s2">&lt; </span><span class="s6">1</span><span class="s2">) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s3">&quot;numAgenti deve essere &gt;= 1&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+
+        <span class="s0">return </span><span class="s1">analisi</span><span class="s2">.</span><span class="s1">suggerisciData</span><span class="s2">(</span><span class="s1">codiceEffettivo</span><span class="s2">, </span><span class="s1">numAgenti</span><span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s4">/** Reset de datos de prueba (borra compras/movimientos y recarga seed) */</span>
+    <span class="s1">@PostMapping</span><span class="s2">(</span><span class="s3">&quot;/reset&quot;</span><span class="s2">)</span>
+    <span class="s0">public void </span><span class="s1">reset</span><span class="s2">() {</span>
+        <span class="s1">analisi</span><span class="s2">.</span><span class="s1">resetTestData</span><span class="s2">();</span>
+    <span class="s2">}</span>
+
+    <span class="s4">/** Agentes activos a la fecha (si no se pasa, hoy) */</span>
+    <span class="s1">@GetMapping</span><span class="s2">(</span><span class="s3">&quot;/agenti-attivi&quot;</span><span class="s2">)</span>
+    <span class="s0">public </span><span class="s1">AgentiAttiviDTO agentiAttiviAllaData</span><span class="s2">(</span>
+            <span class="s1">@RequestParam</span><span class="s2">(</span><span class="s1">name </span><span class="s2">= </span><span class="s3">&quot;data&quot;</span><span class="s2">, </span><span class="s1">required </span><span class="s2">= </span><span class="s0">false</span><span class="s2">)</span>
+            <span class="s1">@DateTimeFormat</span><span class="s2">(</span><span class="s1">iso </span><span class="s2">= </span><span class="s1">DateTimeFormat</span><span class="s2">.</span><span class="s1">ISO</span><span class="s2">.</span><span class="s1">DATE</span><span class="s2">) </span><span class="s1">LocalDate data</span><span class="s2">) {</span>
+
+        <span class="s1">LocalDate d </span><span class="s2">= (</span><span class="s1">data </span><span class="s2">!= </span><span class="s0">null</span><span class="s2">) ? </span><span class="s1">data </span><span class="s2">: </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">now</span><span class="s2">();</span>
+        <span class="s0">return </span><span class="s1">analisi</span><span class="s2">.</span><span class="s1">agentiAttiviAllaData</span><span class="s2">(</span><span class="s1">d</span><span class="s2">);</span>
+    <span class="s2">}</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>

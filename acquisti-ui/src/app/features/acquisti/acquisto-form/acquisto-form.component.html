@@ -6,33 +6,25 @@
 
     <div class="kpi-row">
       <p-card class="kpi" [subheader]="'Saldo total'">
-        <div
-          class="kpi-value"
-          [ngClass]="{
-            neg: saldoTotaleDisponibile < 0,
-            warn: badgeType === 'warn'
-          }"
-        >
+        <div class="kpi-value" [ngClass]="{ neg: saldoTotaleDisponibile < 0 }">
           {{ saldoTotaleDisponibile | number : '1.2-2' }} €
         </div>
-
-        <!-- Mensaje sutil bajo el valor cuando no está OK -->
-        <small
-          *ngIf="badgeType !== 'ok'"
-          class="kpi-hint"
-          [ngClass]="{ neg: badgeType === 'neg', warn: badgeType === 'warn' }"
-        >
-          {{ badgeType === 'neg' ? 'Saldo negativo' : 'Importe total > saldo disponible' }}
-        </small>
       </p-card>
-
       <p-card class="kpi" [subheader]="'Importe total'">
         <div class="kpi-value">{{ form.value.importoTotale || 0 | number : '1.2-2' }} €</div>
       </p-card>
       <p-card class="kpi" [subheader]="'Diferencia'">
-        <div class="kpi-value" [ngClass]="{ neg: diffImporteSaldo() < 0 }">
-          {{ diffImporteSaldo() | number : '1.2-2' }} €
-        </div>
+            <div
+              class="kpi-value"
+              [ngClass]="{
+                pos: diffImporteSaldo() > 0,
+                zero: diffImporteSaldo() === 0,
+                neg: diffImporteSaldo() < 0
+              }"
+            >
+              {{ diffImporteSaldo() | number : '1.2-2' }} €
+            </div>
+            <div class="muted">{{ diffLabel }}</div>
       </p-card>
     </div>
 

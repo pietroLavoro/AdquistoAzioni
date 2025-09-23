@@ -1,0 +1,120 @@
+<html>
+<head>
+<title>AcquistoController.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+.s4 { color: #7a7e85;}
+.s5 { color: #2aacb8;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+AcquistoController.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">api</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">repository</span><span class="s2">.</span><span class="s1">TitoloRepository</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">.</span><span class="s1">AcquistoService</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">.</span><span class="s1">ReportingService</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">com</span><span class="s2">.</span><span class="s1">tuorg</span><span class="s2">.</span><span class="s1">acquisti</span><span class="s2">.</span><span class="s1">service</span><span class="s2">.</span><span class="s1">RipartoService</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">jakarta</span><span class="s2">.</span><span class="s1">validation</span><span class="s2">.</span><span class="s1">Valid</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">http</span><span class="s2">.</span><span class="s1">HttpStatus</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">web</span><span class="s2">.</span><span class="s1">bind</span><span class="s2">.</span><span class="s1">annotation</span><span class="s2">.*;</span>
+<span class="s0">import </span><span class="s1">org</span><span class="s2">.</span><span class="s1">springframework</span><span class="s2">.</span><span class="s1">web</span><span class="s2">.</span><span class="s1">server</span><span class="s2">.</span><span class="s1">ResponseStatusException</span><span class="s2">;</span>
+
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">LocalDate</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">time</span><span class="s2">.</span><span class="s1">format</span><span class="s2">.</span><span class="s1">DateTimeFormatter</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">java</span><span class="s2">.</span><span class="s1">util</span><span class="s2">.</span><span class="s1">List</span><span class="s2">;</span>
+
+<span class="s1">@RestController</span>
+<span class="s1">@RequestMapping</span><span class="s2">(</span><span class="s3">&quot;/api/acquisto&quot;</span><span class="s2">)</span>
+<span class="s0">public class </span><span class="s1">AcquistoController </span><span class="s2">{</span>
+
+    <span class="s0">private final </span><span class="s1">RipartoService riparto</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">AcquistoService acquistoService</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">ReportingService reportingService</span><span class="s2">;</span>
+    <span class="s0">private final </span><span class="s1">TitoloRepository titoloRepository</span><span class="s2">;</span>
+
+    <span class="s0">public </span><span class="s1">AcquistoController</span><span class="s2">(</span><span class="s1">RipartoService riparto</span><span class="s2">,</span>
+                              <span class="s1">AcquistoService acquistoService</span><span class="s2">,</span>
+                              <span class="s1">ReportingService reportingService</span><span class="s2">,</span>
+                              <span class="s1">TitoloRepository titoloRepository</span><span class="s2">) {</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">riparto </span><span class="s2">= </span><span class="s1">riparto</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">acquistoService </span><span class="s2">= </span><span class="s1">acquistoService</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">reportingService </span><span class="s2">= </span><span class="s1">reportingService</span><span class="s2">;</span>
+        <span class="s0">this</span><span class="s2">.</span><span class="s1">titoloRepository </span><span class="s2">= </span><span class="s1">titoloRepository</span><span class="s2">;</span>
+    <span class="s2">}</span>
+
+    <span class="s4">// ---------- PREVIEW ----------</span>
+    <span class="s1">@PostMapping</span><span class="s2">(</span><span class="s3">&quot;/preview&quot;</span><span class="s2">)</span>
+    <span class="s0">public </span><span class="s1">PreviewResponse preview</span><span class="s2">(</span><span class="s1">@Valid @RequestBody PreviewRequest req</span><span class="s2">) {</span>
+
+        <span class="s4">// 1) validar que el título existe</span>
+        <span class="s1">titoloRepository</span><span class="s2">.</span><span class="s1">findByCodice</span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">())</span>
+                <span class="s2">.</span><span class="s1">orElseThrow</span><span class="s2">(() </span><span class="s1">-&gt; </span><span class="s0">new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span>
+                        <span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">,</span>
+                        <span class="s3">&quot;Titolo '&quot; </span><span class="s2">+ </span><span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">() + </span><span class="s3">&quot;' non trovato&quot;</span>
+                <span class="s2">));</span>
+
+        <span class="s4">// 2) parsear fecha 'yyyy-MM-dd'</span>
+        <span class="s1">LocalDate data </span><span class="s2">= </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getDataCompra</span><span class="s2">(), </span><span class="s1">DateTimeFormatter</span><span class="s2">.</span><span class="s1">ISO_LOCAL_DATE</span><span class="s2">);</span>
+
+        <span class="s4">// 3) validar importes/cantidades &gt; 0 (si falla, 400 claro)</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getImportoTotale</span><span class="s2">() == </span><span class="s0">null </span><span class="s2">|| </span><span class="s1">req</span><span class="s2">.</span><span class="s1">getImportoTotale</span><span class="s2">().</span><span class="s1">doubleValue</span><span class="s2">() &lt;= </span><span class="s5">0</span><span class="s2">) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s3">&quot;importoTotale deve essere &gt; 0&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+        <span class="s0">if </span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getQuantitaTotale</span><span class="s2">() == </span><span class="s0">null </span><span class="s2">|| </span><span class="s1">req</span><span class="s2">.</span><span class="s1">getQuantitaTotale</span><span class="s2">() &lt;= </span><span class="s5">0</span><span class="s2">) {</span>
+            <span class="s0">throw new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span><span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">, </span><span class="s3">&quot;quantitaTotale deve essere &gt; 0&quot;</span><span class="s2">);</span>
+        <span class="s2">}</span>
+
+        <span class="s4">// 4) delegar al servicio</span>
+        <span class="s0">return </span><span class="s1">riparto</span><span class="s2">.</span><span class="s1">preview</span><span class="s2">(</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">(),</span>
+                <span class="s1">data</span><span class="s2">,</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getImportoTotale</span><span class="s2">(),</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getQuantitaTotale</span><span class="s2">()</span>
+        <span class="s2">);</span>
+    <span class="s2">}</span>
+
+    <span class="s4">// ---------- CONFERMA ----------</span>
+    <span class="s1">@PostMapping</span><span class="s2">(</span><span class="s3">&quot;/conferma&quot;</span><span class="s2">)</span>
+    <span class="s0">public void </span><span class="s1">conferma</span><span class="s2">(</span><span class="s1">@Valid @RequestBody PreviewRequest req</span><span class="s2">) {</span>
+        <span class="s1">titoloRepository</span><span class="s2">.</span><span class="s1">findByCodice</span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">())</span>
+                <span class="s2">.</span><span class="s1">orElseThrow</span><span class="s2">(() </span><span class="s1">-&gt; </span><span class="s0">new </span><span class="s1">ResponseStatusException</span><span class="s2">(</span>
+                        <span class="s1">HttpStatus</span><span class="s2">.</span><span class="s1">BAD_REQUEST</span><span class="s2">,</span>
+                        <span class="s3">&quot;Titolo '&quot; </span><span class="s2">+ </span><span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">() + </span><span class="s3">&quot;' non trovato&quot;</span>
+                <span class="s2">));</span>
+
+        <span class="s1">LocalDate data </span><span class="s2">= </span><span class="s1">LocalDate</span><span class="s2">.</span><span class="s1">parse</span><span class="s2">(</span><span class="s1">req</span><span class="s2">.</span><span class="s1">getDataCompra</span><span class="s2">(), </span><span class="s1">DateTimeFormatter</span><span class="s2">.</span><span class="s1">ISO_LOCAL_DATE</span><span class="s2">);</span>
+
+        <span class="s1">acquistoService</span><span class="s2">.</span><span class="s1">conferma</span><span class="s2">(</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getTitoloCodice</span><span class="s2">(),</span>
+                <span class="s1">data</span><span class="s2">,</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getImportoTotale</span><span class="s2">(),</span>
+                <span class="s1">req</span><span class="s2">.</span><span class="s1">getQuantitaTotale</span><span class="s2">()</span>
+        <span class="s2">);</span>
+    <span class="s2">}</span>
+
+
+    <span class="s4">// ---------- LISTA ----------</span>
+    <span class="s1">@GetMapping</span>
+    <span class="s0">public </span><span class="s1">List</span><span class="s2">&lt;</span><span class="s1">AcquistoSummaryResponse</span><span class="s2">&gt; </span><span class="s1">list</span><span class="s2">() {</span>
+        <span class="s0">return </span><span class="s1">reportingService</span><span class="s2">.</span><span class="s1">listAcquisti</span><span class="s2">();</span>
+    <span class="s2">}</span>
+
+    <span class="s4">// ---------- DETTAGLIO ----------</span>
+    <span class="s1">@GetMapping</span><span class="s2">(</span><span class="s3">&quot;/{id}&quot;</span><span class="s2">)</span>
+    <span class="s0">public </span><span class="s1">AcquistoDettaglioResponse dettaglio</span><span class="s2">(</span><span class="s1">@PathVariable Long id</span><span class="s2">) {</span>
+        <span class="s0">return </span><span class="s1">reportingService</span><span class="s2">.</span><span class="s1">dettaglio</span><span class="s2">(</span><span class="s1">id</span><span class="s2">);</span>
+    <span class="s2">}</span>
+<span class="s2">}</span>
+</pre>
+</body>
+</html>
