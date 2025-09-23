@@ -15,9 +15,9 @@ import { TableModule } from 'primeng/table'; // Table NO es standalone
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Card } from 'primeng/card';
-import { Panel } from 'primeng/panel';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { MessageService, ConfirmationService } from 'primeng/api';
+import { Dialog } from 'primeng/dialog';
 
 /* Servicio + DTOs */
 import {
@@ -43,7 +43,6 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
 
     // PrimeNG (standalone)
     Card,
-    Panel,
     Button,
     Select,
     DatePicker,
@@ -51,6 +50,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     TableModule,
     ProgressSpinner,
     Toast,
+    Dialog,
     ConfirmDialog,
 
     // propios
@@ -73,7 +73,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   error: string | null = null;
 
   titoli: Titolo[] = [];
-  rows: AgenteSaldo[] = [];
+  // Permitimos un campo opcional "quantitaTitoli" por agente.
+  rows: Array<AgenteSaldo & { quantitaTitoli?: number }> = [];
   polling?: Subscription;
   pollingMs = 5000;
 
@@ -88,6 +89,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   });
 
   preview: PreviewResponse | null = null;
+  previewVisible = false;
 
   // (estos ya no se usan con p-toast, puedes borrarlos si quieres)
   toastMsg = '';
@@ -97,6 +99,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   // Tema oscuro
   isDark = false;
+
+  // Inicialización de importe total con saldo (solo una vez)
+  private importoInizializzato = false;
 
   // ---------------- lifecycle ----------------
   ngOnInit(): void {
@@ -142,10 +147,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   private applyThemeClass(): void {
     const root = document.documentElement; // <html>
-    // Clase para el selector del tema
-    root.classList.toggle('dark', this.isDark);
-    // Atributo alternativo que algunas libs consultan
-    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light');
+    root.classList.toggle('dark', this.isDark); // clase para CSS
+    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light'); // atributo opcional
   }
 
   // ---------------- helpers UI ----------------
@@ -167,6 +170,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (resp) => {
           this.preview = resp;
+          this.previewVisible = true; // abrir popup
           this.showToast('Previsualización OK', 'info');
         },
         error: (err: HttpErrorResponse) => {
@@ -189,6 +193,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.preview = null;
+          this.previewVisible = false;
           this.showToast('Compra confirmada', 'success');
           this.refreshSaldosUnifiedOnce();
           this.startUnifiedPolling();
@@ -297,6 +302,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   cancelarPreview(): void {
     this.preview = null;
+    this.previewVisible = false;
   }
 
   // ---------------- data helpers ----------------
@@ -310,7 +316,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
     if (this.isTodaySelected()) {
       this.api.getSaldiAgenti().subscribe({
-        next: (res) => (this.rows = res),
+        next: (res) => {
+          this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
+          this.tryInitImportoTotaleConSaldo(); // inicializa importe total una sola vez
+        },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
     } else {
@@ -318,11 +327,38 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.agentiInfo = res;
           this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
-          this.rows = res.agenti || [];
+          this.rows = this.normalizeRows(
+            (res.agenti ?? []) as Array<AgenteSaldo & { quantitaTitoli?: number }>
+          );
+          this.tryInitImportoTotaleConSaldo(); // idem para “a la fecha”
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
       });
     }
+  }
+
+  // Inicializa el importe total con el saldo (enteros, sin negativos). Se ejecuta 1 sola vez.
+  private tryInitImportoTotaleConSaldo(): void {
+    if (this.importoInizializzato) return;
+    const tot = this.saldoTotaleDisponibile;
+    const iniziale = Math.max(0, Math.floor(tot)); // entero para coincidir con 0 fracciones en el input
+    this.form.patchValue({ importoTotale: iniziale });
+    this.importoInizializzato = true;
+  }
+
+  private normalizeRows(
+    arr: Array<AgenteSaldo & { quantitaTitoli?: number }>
+  ): Array<AgenteSaldo & { quantitaTitoli?: number }> {
+    const seen = new Set<string>();
+    const out: Array<AgenteSaldo & { quantitaTitoli?: number }> = [];
+    for (const r of arr ?? []) {
+      const key = String(r.id);
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(r);
+      }
+    }
+    return out;
   }
 
   private toIsoFromDmy(dmy: string): string {
@@ -375,7 +411,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         switchMap(() => this.api.getSaldiAgenti())
       )
       .subscribe({
-        next: (res) => (this.rows = res),
+        next: (res) => {
+          this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
+        },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
   }
@@ -431,12 +469,22 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   }
 
   get diffLabel(): string {
-  const diff = this.diffImporteSaldo();
-  if (diff > 0) return 'Saldo restante';
-  if (diff === 0) return 'Saldo exacto';
-  return 'Falta';
-}
+    const diff = this.diffImporteSaldo();
+    if (diff > 0) return 'Saldo restante';
+    if (diff === 0) return 'Saldo exacto';
+    return 'Falta';
+  }
 
+  // Devuelve la lista deduplicada siempre que la vista la pida
+  // Devuelve la lista deduplicada siempre que la vista la pida
+  get dedupedRows(): Array<AgenteSaldo & { quantitaTitoli?: number }> {
+    return this.normalizeRows(this.rows);
+  }
+
+  // TrackBy para que Angular no replique filas al reconciliar
+  trackByIdCf(_i: number, r: AgenteSaldo & { codiceFiscale: string }): string {
+    return `${r.id}|${r.codiceFiscale}`;
+  }
 
   diffImporteSaldo(): number {
     const imp = Number(this.form.get('importoTotale')?.value) || 0;

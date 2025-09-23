@@ -269,3 +269,18 @@ html.dark .p-datatable .p-paginator {
 .kpi-value.pos { color: #2ecc71; }   /* verde */
 .kpi-value.zero { color: #f1c40f; }  /* ámbar */
 .kpi-value.neg { color: #e74c3c; }   /* rojo */
+
+html.dark .p-dialog {
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+
+/* Ajuste de color para títulos de los KPI en dark mode */
+html.dark .kpi .p-card .p-card-title {
+  color: #e0e6f0;   /* un gris claro azulado */
+  font-weight: 600;
+}
+
+/* Opcional: para dar más contraste a subtítulos o textos pequeños */
+html.dark .kpi .muted {
+  color: #aab4c8;
+}
