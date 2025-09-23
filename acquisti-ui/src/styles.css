@@ -1,1 +1,35 @@
-/* You can add global styles to this file, and also import other style files */
+:root { --bg-gradient: linear-gradient(140deg, #eef3ff, #e8f1f7 40%, #f8fbff); }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-family, system-ui, sans-serif);
+  background: var(--bg-gradient);
+  padding: 1rem;
+}
+
+/* Grid principal */
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+.card { border-radius: 1rem; }
+
+/* Utilidades */
+.form-grid { display: grid; gap: .75rem; }
+.row-inline { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.field label { display: inline-block; margin-bottom: .25rem; }
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.mt-2 { margin-top: .75rem; }
+.mt-3 { margin-top: 1.25rem; }
+.muted { opacity: .7; font-weight: 400; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.err { color: #c00; margin-top: 8px; }
+.neg { color: #c00; }
+
+/* Responsive */
+@media (max-width: 992px) {
+  .app-grid { grid-template-columns: 1fr; }
+}

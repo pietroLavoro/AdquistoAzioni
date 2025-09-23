@@ -1,13 +1,15 @@
-<!-- acquisto-form.component.html (PrimeNG v20) -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
+<!-- Layout 2 columnas con tarjetas -->
+<div class="app-grid">
+
   <!-- Columna izquierda: FORM -->
-  <section>
-    <form [formGroup]="form" novalidate>
-      <div
-        style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap"
-      >
-        <div>
-          <label for="titoloCodice">Código Título</label><br />
+  <p-card class="card">
+    <ng-template pTemplate="title">Nuevo acquisto</ng-template>
+
+    <form [formGroup]="form" novalidate class="p-fluid form-grid">
+      <!-- Código Título + saldo -->
+      <div class="row-inline">
+        <div class="field">
+          <label for="titoloCodice">Código Título </label>
           <p-select
             id="titoloCodice"
             formControlName="titoloCodice"
@@ -16,28 +18,21 @@
             optionValue="codice"
             placeholder="Seleccione título"
             [showClear]="true"
-            style="min-width: 260px"
-          >
+            style="min-width: 260px">
           </p-select>
         </div>
 
         <!-- Badge de saldo total disponible -->
-        <span
-          class="badge"
-          [ngClass]="{
-            'badge--ok': badgeType === 'ok',
-            'badge--warn': badgeType === 'warn',
-            'badge--neg': badgeType === 'neg'
-          }"
-          title="Suma de saldos disponibles de los agentes"
-        >
-          Saldo total: {{ saldoTotaleDisponibile | number : '1.2-2' }}
-        </span>
+        <p-tag
+          *ngIf="saldoTotaleDisponibile != null"
+          [value]="'Saldo total: ' + (saldoTotaleDisponibile | number:'1.2-2')"
+          [severity]="badgeType === 'ok' ? 'success' : (badgeType === 'warn' ? 'warn' : 'danger')">
+        </p-tag>
       </div>
 
-      <div style="margin-bottom: 8px">
-        <label for="dataCompra">Fecha</label><br />
-        <!-- DatePicker nuevo: dataType string para mantener ISO en el form -->
+      <!-- Fecha -->
+      <div class="field">
+        <label for="dataCompra">Fecha</label>
         <p-datepicker
           id="dataCompra"
           formControlName="dataCompra"
@@ -45,155 +40,156 @@
           dataType="string"
           [showIcon]="true"
           inputId="dataCompra"
-          style="min-width: 220px"
-        >
+          style="min-width: 220px">
         </p-datepicker>
       </div>
 
-      <div style="margin-bottom: 8px">
-        <label for="imp">Importe total</label><br />
+      <!-- Importe total -->
+      <div class="field">
+        <label for="imp">Importe total</label>
         <p-inputNumber
           inputId="imp"
           formControlName="importoTotale"
           mode="currency"
           currency="EUR"
           [min]="0"
-          [step]="1"
-        >
+          [step]="1">
         </p-inputNumber>
       </div>
 
-      <div style="margin-bottom: 8px">
-        <label for="qta">Cantidad total</label><br />
+      <!-- Cantidad total -->
+      <div class="field">
+        <label for="qta">Cantidad total</label>
         <p-inputNumber
           inputId="qta"
           formControlName="quantitaTotale"
           [min]="1"
           [step]="1"
-          [useGrouping]="false"
-        >
+          [useGrouping]="false">
         </p-inputNumber>
       </div>
 
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
+      <!-- Acciones -->
+      <div class="actions">
         <p-button
           label="Previsualizar"
+          icon="pi pi-eye"
           (onClick)="doPreview()"
-          [disabled]="loading || form.invalid"
-        >
+          [disabled]="loading || form.invalid">
         </p-button>
 
         <p-button
           label="Sugerir fecha"
+          icon="pi pi-calendar-plus"
           severity="secondary"
           (onClick)="onSuggerisciData()"
-          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0"
-        >
+          [disabled]="loading || !form.get('titoloCodice')?.value || numAgentiAttivi === 0">
         </p-button>
 
         <p-button
           label="Reiniciar saldos"
+          icon="pi pi-refresh"
           severity="warn"
           (onClick)="resetSaldos()"
-          [disabled]="loading"
-        >
+          [disabled]="loading">
         </p-button>
       </div>
 
-      <p *ngIf="error" style="color: #c00; margin-top: 8px">Error: {{ error }}</p>
+      <p *ngIf="error" class="err">Error: {{ error }}</p>
     </form>
 
     <!-- PREVISUALIZACIÓN -->
-    <div *ngIf="preview" style="margin-top: 16px; padding: 12px; border: 1px solid #999">
-      <h3>Previsualización</h3>
+    <p-panel *ngIf="preview" header="Previsualización" class="mt-3">
+      <div class="preview-info">
+        <p>
+          <strong>Título:</strong> {{ preview!.titoloCodice }}
+          &nbsp; | &nbsp;
+          <strong>Fecha:</strong> {{ preview!.dataCompra }}
+          &nbsp; | &nbsp;
+          <strong>Importe total:</strong> {{ preview!.importoTotale | number : '1.2-2' }}
+          &nbsp; | &nbsp;
+          <strong>Cantidad total:</strong> {{ preview!.quantitaTotale }}
+        </p>
+      </div>
 
-      <p>
-        <strong>Título:</strong> {{ preview!.titoloCodice }}
-        &nbsp; | &nbsp;
-        <strong>Fecha:</strong> {{ preview!.dataCompra }}
-        &nbsp; | &nbsp;
-        <strong>Importe total:</strong> {{ preview!.importoTotale | number : '1.2-2' }}
-        &nbsp; | &nbsp;
-        <strong>Cantidad total:</strong> {{ preview!.quantitaTotale }}
-      </p>
-
-      <table border="1" cellpadding="6" style="margin-top: 8px; width: 100%; max-width: 680px">
-        <thead>
+      <p-table [value]="preview!.riparto" [responsiveLayout]="'scroll'" [tableStyle]="{ 'min-width': '30rem' }">
+        <ng-template pTemplate="header">
           <tr>
-            <th style="text-align: left">Agente ID</th>
-            <th style="text-align: left">CF</th>
-            <th style="text-align: right">Importe asignado</th>
-            <th style="text-align: right">Cantidad asignada</th>
+            <th>Agente ID</th>
+            <th>CF</th>
+            <th class="text-right">Importe asignado</th>
+            <th class="text-right">Cantidad asignada</th>
           </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let r of preview!.riparto">
+        </ng-template>
+        <ng-template pTemplate="body" let-r>
+          <tr>
             <td>{{ r.agenteId }}</td>
             <td>{{ r.codiceFiscale }}</td>
-            <td style="text-align: right">{{ r.importoAgente | number : '1.2-2' }}</td>
-            <td style="text-align: right">{{ r.quantitaAgente }}</td>
+            <td class="text-right">{{ r.importoAgente | number : '1.2-2' }}</td>
+            <td class="text-right">{{ r.quantitaAgente }}</td>
           </tr>
-        </tbody>
-      </table>
+        </ng-template>
+      </p-table>
 
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap">
+      <div class="actions mt-2">
         <p-button
           [label]="loading ? 'Confirmando…' : 'Confirmar compra'"
+          icon="pi pi-check"
           (onClick)="confirmarDesdePreview()"
-          [disabled]="loading"
-        >
+          [disabled]="loading">
         </p-button>
 
         <p-button
           label="Cancelar"
+          icon="pi pi-times"
           severity="secondary"
           (onClick)="cancelarPreview()"
-          [disabled]="loading"
-        >
+          [disabled]="loading">
         </p-button>
       </div>
-    </div>
+    </p-panel>
     <!-- /PREVISUALIZACIÓN -->
-  </section>
+  </p-card>
 
   <!-- Columna derecha: SALDOS -->
-  <section>
-    <div style="display: flex; align-items: baseline; gap: 12px">
-      <h3 style="margin: 0">Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}</h3>
-      <small *ngIf="isTodaySelected()" style="font-weight: normal; color: #555"
-        >(actualiza cada 5s)</small
-      >
-      <span style="flex: 1 1 auto"></span>
-    </div>
+  <p-card class="card">
+    <ng-template pTemplate="title">
+      Saldos {{ isTodaySelected() ? 'en vivo' : 'a la fecha' }}
+      <small *ngIf="isTodaySelected()" class="muted"> (actualiza cada 5s)</small>
+    </ng-template>
 
-    <table border="1" cellpadding="6" style="width: 420px; margin-top: 8px">
-      <thead>
+    <p-table
+      [value]="rows"
+      [responsiveLayout]="'scroll'"
+      [tableStyle]="{ 'min-width': '28rem' }">
+      <ng-template pTemplate="header">
         <tr>
-          <th style="text-align: left">ID</th>
-          <th style="text-align: left">CF</th>
-          <th style="text-align: right">Saldo disp.</th>
+          <th style="width: 5rem">ID</th>
+          <th>CF</th>
+          <th class="text-right">Saldo disp.</th>
         </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let r of rows">
+      </ng-template>
+      <ng-template pTemplate="body" let-r>
+        <tr>
           <td>{{ r.id }}</td>
           <td>{{ r.codiceFiscale }}</td>
-          <td [style.text-align]="'right'" [style.color]="r.saldoDisponibile < 0 ? '#c00' : '#000'">
+          <td class="text-right" [ngClass]="{ 'neg': r.saldoDisponibile < 0 }">
             {{ r.saldoDisponibile | number : '1.2-2' }}
           </td>
         </tr>
-        <tr *ngIf="!rows?.length">
-          <td colspan="3" style="text-align: center; color: #666">Sin datos</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="3" class="muted text-center">Sin datos</td></tr>
+      </ng-template>
+    </p-table>
+  </p-card>
 </div>
 
 <!-- Compras registradas (incrustado) -->
-<section style="margin-top: 16px">
+<p-card class="card mt-3">
+  <ng-template pTemplate="title">Compras registradas</ng-template>
   <app-acquisti-list [embedded]="true"></app-acquisti-list>
-</section>
+</p-card>
 
 <!-- Toast y ConfirmDialog de PrimeNG -->
 <p-toast></p-toast>

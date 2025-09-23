@@ -6,15 +6,17 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
 import { finalize, startWith, switchMap } from 'rxjs/operators';
 
-/* PrimeNG: usar NgModules en este proyecto */
-import { ButtonModule } from 'primeng/button';
-import { Select } from 'primeng/select';          // ⬅️ reemplaza a Dropdown
-import { DatePicker } from 'primeng/datepicker';  // ⬅️ reemplaza a Calendar
-import { InputNumberModule } from 'primeng/inputnumber';
+/* PrimeNG: usar componentes standalone coherentes con el HTML */
+import { Button } from 'primeng/button';
+import { Select } from 'primeng/select';           // ⬅️ reemplaza a Dropdown
+import { DatePicker } from 'primeng/datepicker';   // ⬅️ reemplaza a Calendar
+import { InputNumber } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { Tag } from 'primeng/tag';
+import { Toast } from 'primeng/toast';
+import { ConfirmDialog } from 'primeng/confirmdialog';
+import { Card } from 'primeng/card';
+import { Panel } from 'primeng/panel';
 import { MessageService, ConfirmationService } from 'primeng/api';
 
 /* Servicio + DTOs */
@@ -39,15 +41,17 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     ReactiveFormsModule,
     DecimalPipe,
 
-    // PrimeNG (NgModules)
-    ButtonModule,
+    // PrimeNG (standalone)
+    Card,
+    Panel,
+    Button,
     Select,
     DatePicker,
-    InputNumberModule,
+    InputNumber,
     TableModule,
-    TagModule,
-    ToastModule,
-    ConfirmDialogModule,
+    Tag,
+    Toast,
+    ConfirmDialog,
 
     // propios
     AcquistiListComponent,
