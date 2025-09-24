@@ -1,160 +1,210 @@
-/* =========================================================
-   Base + Light theme
-   ========================================================= */
-:root {
-  --bg-gradient-light: linear-gradient(140deg, #eef3ff, #e8f1f7 40%, #f8fbff);
+/* ================================
+   BASE + TOKENS (escala de espacios)
+   ================================ */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+:root{
+  /* Escala */
+  --s-1: .50rem;
+  --s-2: 1.00rem;
+  --s-3: 1.50rem;
+  --s-4: 2.00rem;
+
+  /* Layout */
+  --gutter-x: var(--s-4);   /* separación entre columnas */
+  --gutter-y: var(--s-3);   /* separación entre filas   */
+
+  /* Cards */
+  --card-pad-x: var(--s-3);
+  --card-pad-y: var(--s-3);
+  --radius: 1rem;
+
+  /* Ritmo interno */
+  --section-gap: var(--s-3); /* separación entre bloques dentro de una card */
+  --field-gap:   var(--s-2); /* separación entre campos del formulario      */
+
+  /* Página */
+  --page-pad-x: 1.25rem;
+  --page-pad-y: .75rem;
+  --readable-max: 780px;
+
+  /* Colores utilitarios */
+  --muted: #9ca3af;
 }
 
-html, body { height: 100%; }
-
-/* Transiciones suaves para cambio de tema */
 html, body,
-.p-card, .p-panel,
-.p-datatable, .p-table,
-.p-inputtext, .p-inputnumber-input,
-.p-select, .p-datepicker,
-.card {
+.p-card, .p-panel, .p-datatable,
+.p-inputtext, .p-inputnumber-input, .p-select, .p-datepicker, .card {
   transition: background .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease, filter .2s ease;
 }
 
 body {
   margin: 0;
   font-family: var(--font-family, system-ui, sans-serif);
-  background: var(--surface-ground);
-  color: var(--text-color);
-  padding: 1rem;
+  padding: var(--s-2);
 }
 
-/* Degradado forzado en modo claro */
-html:not(.dark) body {
-  background: var(--bg-gradient-light);
-}
+.muted { color: var(--muted); }
+.err, .neg { color:#e74c3c; }
+.text-right { text-align:right; }
+.text-center { text-align:center; }
 
-/* =========================================================
-   Layout
-   ========================================================= */
-.app-grid {
+/* ================================
+   GRID PRINCIPAL
+   ================================ */
+.page-grid{
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:
+    "left right"
+    "bottom bottom";
+  column-gap: var(--gutter-x);
+  row-gap: var(--gutter-y);
+  align-items: stretch; /* estira ambas columnas */
+  padding: var(--page-pad-y) var(--page-pad-x); /* sangría general */
 }
-.card { border-radius: 1rem; }
+.col.left  { grid-area: left; }
+.col.right { grid-area: right; display: grid; grid-template-rows: auto minmax(0,1fr); gap: var(--section-gap); }
+.bottom    { grid-area: bottom; }
 
-/* =========================================================
-   Utilities
-   ========================================================= */
-.form-grid { display: grid; gap: .75rem; }
-.row-inline { display: flex; align-items: center; gap: .100rem; flex-wrap: wrap; }
-/* Campos del formulario: espacio claro entre label e input */
-.field{
-  display: grid;
-  grid-auto-flow: row;
-  gap: .6rem;            /* ← separación label ↔ input */
+/* ================================
+   CARDS + HEADERS
+   ================================ */
+.card { border-radius: var(--radius); overflow: hidden; }
+.card .p-card-body{ padding: var(--card-pad-y) var(--card-pad-x) !important; }
+.card .p-card-content{ padding: 0 !important; } /* el body gobierna */
+
+.card-header{
+  display:flex; align-items:center; justify-content:space-between; gap: var(--s-2);
+  padding-bottom: calc(var(--s-2) - 2px);
+  margin-bottom: var(--s-2);
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.field > label{
-  margin: 0;
-  display: block;
-  font-weight: 500;
-}
+.title{ margin: 0 0 var(--s-2) 0; }
 
-.actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+/* Columna izquierda ocupa todo el alto y tiene padding aunque sea <section> */
+.col.left.card{ height: 100%; display:flex; flex-direction:column; }
+.col.left.card.p-card{ padding: var(--card-pad-y) var(--card-pad-x); border-radius: var(--radius); }
+.col.left.card .p-card-body{ display:flex; flex-direction:column; }
+.col.left.card .p-card-content{ flex:1 1 auto; min-height:0; max-width: var(--readable-max); margin-right: auto; }
 
-.mt-2 { margin-top: .75rem; }
-.mt-3 { margin-top: 1.25rem; }
-.muted { opacity: .7; font-weight: 400; }
-.text-right { text-align: right; }
-.text-center { text-align: center; }
-.err, .neg { color: #c00; }
-.flex-right { margin-left: auto; }
+/* ================================
+   FORM / BLOQUES INTERNOS
+   ================================ */
+.form-grid { display:grid; gap: var(--field-gap); }
+.row-inline { display:flex; align-items:center; gap: var(--s-2); flex-wrap:wrap; }
+.field { display:grid; gap:.6rem; }
+.field > label { margin:0; font-weight:500; }
+.actions { display:flex; gap: var(--s-2); flex-wrap:wrap; margin-top: var(--s-2); }
 
-/* =========================================================
+/* Controles a ancho completo y sin sensación de “pegados” */
+.col.left.card .p-inputtext,
+.col.left.card .p-inputnumber-input,
+.col.left.card .p-select,
+.col.left.card .p-datepicker { width: 100%; }
+.col.left.card .p-input-icon-right{ padding-right: .35rem; }
+
+/* ================================
    KPIs
-   ========================================================= */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: .75rem;
-  margin-bottom: .5rem;
-}
+   ================================ */
+.kpi-row { display:grid; grid-template-columns: repeat(3,1fr); gap: var(--s-2); margin-bottom: var(--section-gap); }
 .kpi .p-card { border-radius: .75rem; }
 .kpi-value { font-size: 1.25rem; font-weight: 700; }
+.kpi-value.pos  { color:#2ecc71; }
+.kpi-value.zero { color:#f1c40f; }
+.kpi-value.neg  { color:#ff6b6b; }
 
-/* =========================================================
-   Loading overlay
-   ========================================================= */
-.loading-overlay{
-  position: fixed; inset: 0;
-  display:flex; align-items:center; justify-content:center;
-  background: rgba(0,0,0,.12);
-  backdrop-filter: blur(1px);
-  z-index: 1000;
+/* ================================
+   TABLA + GRÁFICO (alturas saludables)
+   ================================ */
+.table-card { display:flex; flex-direction:column; min-height: 360px; }
+.table-card .p-card-body{ display:flex; flex-direction:column; }
+.table-card .p-card-content{ flex:1 1 auto; min-height:0; }
+
+/* Compactar espacio entre título y tabla en “Saldos en vivo” */
+.table-card .card-header{
+  margin-bottom: .35rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
 
-/* =========================================================
-   Floating theme toggle
-   ========================================================= */
-.theme-toggle{
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 1100;
+/* p-table scrollable con header visible y sin aire extra */
+.table-card ::ng-deep .p-table-scrollable-wrapper,
+.table-card ::ng-deep .p-table-scrollable-view{ height: auto !important; }
+
+.table-card ::ng-deep .p-table-scrollable-header,
+.table-card ::ng-deep .p-table-scrollable-header-box{
+  height: auto !important;
+  overflow: visible !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
 }
 
-/* =========================================================
-   Responsive
-   ========================================================= */
+/* El body scrollea con el alto que indiques en [scrollHeight] en el HTML */
+.table-card ::ng-deep .p-table-scrollable-body{
+  height: auto !important;          /* PrimeNG calcula por scrollHeight */
+  max-height: none !important;
+  overflow: auto;
+  padding-bottom: .5rem;            /* que no corte la última fila */
+}
+
+/* Densidad/padding de celdas */
+.dense ::ng-deep .p-table thead > tr > th,
+.dense ::ng-deep .p-table tbody > tr > td { padding:.6rem .8rem; }
+.dense ::ng-deep .p-table tbody > tr > td { font-size:.95rem; }
+
+/* Gráfico: ocupa el alto del card de forma limpia */
+.chart-card { min-height: 380px; display:flex; flex-direction:column; }
+.chart-wrap { flex:1 1 auto; min-height:0; }
+
+/* ================================
+   OVERLAYS / UTILS
+   ================================ */
+.loading-overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.12); backdrop-filter: blur(1px); z-index:1000; }
+.theme-toggle{ position:fixed; top:12px; right:12px; z-index:1100; }
+
+/* ================================
+   RESPONSIVE
+   ================================ */
 @media (max-width: 992px){
-  .app-grid { grid-template-columns: 1fr; }
-  .kpi-row { grid-template-columns: 1fr; }
-}
-@media (max-width: 768px){
-  .theme-toggle{ top: 8px; right: 8px; }
+  .page-grid{
+    grid-template-columns: 1fr;
+    grid-template-areas: "left" "right" "bottom";
+    column-gap: var(--s-2);
+    row-gap: var(--s-2);
+  }
+  :root{
+    --card-pad-x: var(--s-2);
+    --card-pad-y: var(--s-2);
+    --section-gap: var(--s-2);
+    --field-gap:   var(--s-2);
+    --readable-max: 100%;
+  }
 }
 
-/* =========================================================
+/* ================================
    DARK THEME — SOFT PALETTE
-   (aplica cuando <html class="dark">)
-   ========================================================= */
+   ================================ */
 html.dark {
-  /* Paleta base suave */
-  --soft-bg-1: #1f2430;
-  --soft-bg-2: #262b36;
-  --soft-card: #2b3040;
-  --soft-border: #3a4152;
-  --soft-text: #e8ebf1;
-  --soft-muted: #b7bfd1;
-  --soft-row-hover: #2f3546;
-  --soft-input: #32384a; /* un poco más claro para mejor contraste */
-
-  --soft-accent: #7aa2f7;
-  --soft-success: #57d39b;
-  --soft-warn:   #ffcc66;
-  --soft-error:  #ff7a90;
+  --soft-bg-1:#1f2430; --soft-bg-2:#262b36; --soft-card:#2b3040; --soft-border:#3a4152;
+  --soft-text:#e8ebf1; --soft-muted:#b7bfd1; --soft-row-hover:#2f3546; --soft-input:#32384a;
 }
-
-/* Fondo + texto global en dark */
 html.dark body {
   background: linear-gradient(150deg, var(--soft-bg-1), var(--soft-bg-2) 45%, var(--soft-bg-1));
   color: var(--soft-text);
 }
-
-/* Cards / Paneles con sombra suave */
-html.dark .card,
-html.dark .p-card,
-html.dark .p-panel {
+html.dark .card, html.dark .p-card, html.dark .p-panel {
   background: var(--soft-card) !important;
-  border: 1px solid var(--soft-border) !important;
+  border:1px solid var(--soft-border) !important;
   color: var(--soft-text);
   box-shadow: 0 2px 6px rgba(0,0,0,.35);
 }
-
-/* Títulos y texto */
-html.dark h1, html.dark h2, html.dark h3,
-html.dark h4, html.dark h5, html.dark h6,
-html.dark label { color: var(--soft-text); }
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6, html.dark label { color: var(--soft-text); }
 html.dark .muted { color: var(--soft-muted); }
 
-/* Inputs (Prime v20) */
 html.dark .p-inputtext,
 html.dark .p-inputnumber-input,
 html.dark .p-datepicker input,
@@ -163,12 +213,6 @@ html.dark .p-select .p-select-label {
   color: var(--soft-text) !important;
   border-color: var(--soft-border) !important;
 }
-html.dark .p-inputtext::placeholder,
-html.dark .p-select .p-select-label.p-placeholder {
-  color: var(--soft-muted) !important;
-}
-
-/* Overlays (dropdowns, datepicker, toast, confirm) */
 html.dark .p-select-panel,
 html.dark .p-datepicker,
 html.dark .p-overlaypanel,
@@ -176,58 +220,18 @@ html.dark .p-confirm-dialog,
 html.dark .p-toast {
   background: var(--soft-card) !important;
   color: var(--soft-text) !important;
-  border: 1px solid var(--soft-border) !important;
+  border:1px solid var(--soft-border) !important;
   box-shadow: 0 6px 16px rgba(0,0,0,.45);
 }
 
-/* Botones: hover sutil en dark */
-html.dark .p-button:hover {
-  filter: brightness(1.15);
-}
-html.dark .p-button.p-button-secondary,
-html.dark .p-button.p-button-text {
-  background: transparent !important;
-  border-color: var(--soft-border) !important;
-  color: var(--soft-text) !important;
-}
-
-/* Tags con tonos suaves */
-html.dark .p-tag.p-tag-success { background: var(--soft-success) !important; color: #0b2d1f !important; }
-html.dark .p-tag.p-tag-warning { background: var(--soft-warn)   !important; color: #3a2b00 !important; }
-html.dark .p-tag.p-tag-danger  { background: var(--soft-error)  !important; color: #3a0f18 !important; }
-
-/* Overlay de carga en dark */
-html.dark .loading-overlay { background: rgba(0,0,0,.25); }
-
-/* =========================================================
-   DARK SOFT — PrimeNG DataTable / Table
-   ========================================================= */
 html.dark .p-datatable,
-html.dark .p-datatable-wrapper,
-html.dark .p-datatable-table,
-html.dark .p-datatable-thead,
-html.dark .p-datatable-tbody,
-html.dark .p-datatable-tfoot,
 html.dark .p-table,
+html.dark .p-datatable-wrapper,
 html.dark .p-table-wrapper {
   background: var(--soft-card) !important;
   color: var(--soft-text) !important;
-  border: 1px solid var(--soft-border) !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  border:1px solid var(--soft-border) !important;
 }
-
-/* Wrappers de scroll/cabecera/cuerpo */
-html.dark .p-table table,
-html.dark .p-table .p-table-wrapper,
-html.dark .p-table .p-table-scrollable-wrapper,
-html.dark .p-table .p-table-scrollable-header,
-html.dark .p-table .p-table-scrollable-body,
-html.dark .p-table .p-table-scrollable-footer {
-  background: var(--soft-card) !important;
-  color: var(--soft-text) !important;
-}
-
-/* Cabeceras / celdas / bordes */
 html.dark .p-datatable thead > tr > th,
 html.dark .p-table thead > tr > th {
   background: var(--soft-bg-2) !important;
@@ -240,69 +244,11 @@ html.dark .p-table tbody > tr > td {
   color: var(--soft-text) !important;
   border-color: var(--soft-border) !important;
 }
-
-/* Hover / zebra */
 html.dark .p-datatable tbody > tr:hover > td,
-html.dark .p-table tbody > tr:hover > td {
-  background: var(--soft-row-hover) !important;
-}
-html.dark .p-datatable tbody > tr:nth-child(odd) > td,
-html.dark .p-table tbody > tr:nth-child(odd) > td {
-  background: var(--soft-card) !important;
-}
+html.dark .p-table   tbody > tr:hover > td { background: var(--soft-row-hover) !important; }
 
-/* Paginador (si se usa) */
-html.dark .p-table .p-paginator,
-html.dark .p-datatable .p-paginator {
-  background: var(--soft-card) !important;
-  border-top: 1px solid var(--soft-border) !important;
-  color: var(--soft-text) !important;
-}
-
-/* Colores de estado */
-.warn { color: #f59e0b; } /* ámbar suave */
-.neg  { color: #ff6b6b; } /* rojo suave */
-
-/* Texto explicativo bajo el KPI */
-.kpi-hint { display:block; margin-top:.25rem; opacity:.9; font-weight:500; }
-
-.kpi-value.pos { color: #2ecc71; }   /* verde */
-.kpi-value.zero { color: #f1c40f; }  /* ámbar */
-.kpi-value.neg { color: #e74c3c; }   /* rojo */
-
-html.dark .p-dialog {
-  box-shadow: 0 8px 24px rgba(0,0,0,.5);
-}
-
-/* Ajuste de color para títulos de los KPI en dark mode */
-html.dark .kpi .p-card .p-card-title {
-  color: #e0e6f0;   /* un gris claro azulado */
-  font-weight: 600;
-}
-
-/* Opcional: para dar más contraste a subtítulos o textos pequeños */
-html.dark .kpi .muted {
-  color: #aab4c8;
-}
-
-/* Espaciado entre el texto y la X del p-select */
-.p-select .p-select-clear-icon {
-  margin-left: 0.75rem; /* agrega más espacio a la izquierda */
-  font-size: 1rem;      /* opcional: agrandar la X */
-  opacity: 0.8;         /* opcional: que se vea más clara */
-}
-
-/* También puedes dar más padding al label para evitar que quede apretado */
-.p-select .p-select-label {
-  padding-right: 1.5rem; 
-}
-
-/* más espacio entre la X y la flecha */
-.p-select .p-select-clear-icon {
-  margin-right: 0.5rem; /* separa la X de la flecha */
-}
-
-html.dark .p-select-panel {
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-}
+/* ================================
+   PrimeNG Select (aires y legibilidad)
+   ================================ */
+.p-select .p-select-label { padding-right: 1.5rem; }
+.p-select .p-select-clear-icon { margin-left: .75rem; margin-right: .5rem; font-size: 1rem; opacity: .8; }

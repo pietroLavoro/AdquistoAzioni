@@ -2,22 +2,22 @@ import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-
 import { interval, Subscription } from 'rxjs';
 import { finalize, startWith, switchMap } from 'rxjs/operators';
 
-/* PrimeNG: usar componentes standalone coherentes con el HTML */
+/* PrimeNG standalone + módulos necesarios */
 import { Button } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { InputNumber } from 'primeng/inputnumber';
-import { TableModule } from 'primeng/table'; // Table NO es standalone
+import { TableModule } from 'primeng/table'; // (módulo)
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Card } from 'primeng/card';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Dialog } from 'primeng/dialog';
+import { ChartModule } from 'primeng/chart'; // (módulo wrapper de Chart.js)
 
 /* Servicio + DTOs */
 import {
@@ -29,7 +29,7 @@ import {
   Titolo,
 } from '../../acquisti/acquisti.service';
 
-/* Tu lista standalone */
+/* Lista standalone */
 import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-list.component';
 
 @Component({
@@ -40,8 +40,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     FormsModule,
     ReactiveFormsModule,
     DecimalPipe,
-
-    // PrimeNG (standalone)
+    // PrimeNG
     Card,
     Button,
     Select,
@@ -52,7 +51,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     Toast,
     Dialog,
     ConfirmDialog,
-
+    ChartModule,
     // propios
     AcquistiListComponent,
   ],
@@ -72,8 +71,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
 
+  // ---- datos base
   titoli: Titolo[] = [];
-  // Permitimos un campo opcional "quantitaTitoli" por agente.
   rows: Array<AgenteSaldo & { quantitaTitoli?: number }> = [];
   polling?: Subscription;
   pollingMs = 5000;
@@ -88,20 +87,33 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
+  // ---- preview
   preview: PreviewResponse | null = null;
   previewVisible = false;
 
-  // (estos ya no se usan con p-toast, puedes borrarlos si quieres)
-  toastMsg = '';
-  toastType: 'success' | 'info' | 'error' = 'info';
-  toastVisible = false;
-  private toastTimer?: any;
-
-  // Tema oscuro
+  // ---- tema
   isDark = false;
 
-  // Inicialización de importe total con saldo (solo una vez)
+  // ---- init importe con saldo (una sola vez)
   private importoInizializzato = false;
+
+  // ---- Chart.js (PrimeNG Chart)
+  chartData: any = null;
+  chartOptions: any = {
+    responsive: true,
+    maintainAspectRatio: false, // CLAVE para llenar el contenedor
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: { enabled: true },
+      title: { display: false },
+    },
+    layout: { padding: { left: 8, right: 8, top: 4, bottom: 8 } },
+    scales: {
+      x: { ticks: { maxRotation: 0 }, grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.08)' } },
+    },
+  };
 
   // ---------------- lifecycle ----------------
   ngOnInit(): void {
@@ -109,6 +121,12 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.startUnifiedPolling();
     this.verAgentesActivos();
     this.initTheme();
+    // Demo temporal para ver el gráfico
+    this.setChart(
+      ['-14', '-12', '-10', '-8', '-6', '-4', '-2', 'Hoy'],
+      [5, 3, 6, 2, 7, 4, 5, 8], // compras
+      [5000, 4800, 4700, 4600, 4550, 4520, 4500, 4480] // saldos
+    );
 
     this.api.getTitoli().subscribe({
       next: (res) => {
@@ -124,37 +142,43 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.polling?.unsubscribe();
-    this.hideToast();
   }
 
   // ---------------- tema oscuro ----------------
   private initTheme(): void {
-    const saved = localStorage.getItem('theme'); // 'dark' | 'light' | null
+    const saved = localStorage.getItem('theme');
     if (saved === 'dark' || saved === 'light') {
       this.isDark = saved === 'dark';
     } else {
-      // si no hay preferencia guardada, usa la del sistema
       this.isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
     }
     this.applyThemeClass();
   }
-
   toggleDark(): void {
     this.isDark = !this.isDark;
     localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
     this.applyThemeClass();
   }
-
   private applyThemeClass(): void {
-    const root = document.documentElement; // <html>
-    root.classList.toggle('dark', this.isDark); // clase para CSS
-    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light'); // atributo opcional
+    const root = document.documentElement;
+    root.classList.toggle('dark', this.isDark);
+    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light');
   }
 
-  // ---------------- helpers UI ----------------
+  // ---------------- helpers ----------------
   isTodaySelected(): boolean {
     const d = (this.form.get('dataCompra')?.value || '').trim();
     return !!d && d === this.todayIso();
+  }
+  private todayIso(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+  private toIsoFromDmy(dmy: string): string {
+    const [dd, mm, yyyy] = dmy.split('-');
+    return `${yyyy}-${mm}-${dd}`;
   }
 
   // ---------------- acciones ----------------
@@ -170,7 +194,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (resp) => {
           this.preview = resp;
-          this.previewVisible = true; // abrir popup
+          this.previewVisible = true;
           this.showToast('Previsualización OK', 'info');
         },
         error: (err: HttpErrorResponse) => {
@@ -213,7 +237,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
 
   sugerirFecha(): void {
     this.error = null;
-
     const titolo = (this.form.get('titoloCodice')?.value as string | undefined)?.trim();
     if (!titolo) {
       this.error = 'Debe seleccionar un título';
@@ -318,7 +341,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       this.api.getSaldiAgenti().subscribe({
         next: (res) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
-          this.tryInitImportoTotaleConSaldo(); // inicializa importe total una sola vez
+          this.tryInitImportoTotaleConSaldo();
+          // aquí podrías alimentar el gráfico si tu servicio tiene serie diaria de compras/saldos
+          // this.setChart(serie.labels, serie.compras, serie.saldi);
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
@@ -330,18 +355,19 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
           this.rows = this.normalizeRows(
             (res.agenti ?? []) as Array<AgenteSaldo & { quantitaTitoli?: number }>
           );
-          this.tryInitImportoTotaleConSaldo(); // idem para “a la fecha”
+          this.tryInitImportoTotaleConSaldo();
+          // idem gráfico: setChart(...) si tienes la serie a la fecha
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
       });
     }
   }
 
-  // Inicializa el importe total con el saldo (enteros, sin negativos). Se ejecuta 1 sola vez.
+  // Inicializa el importe total con el saldo (enteros, sin negativos). 1 sola vez.
   private tryInitImportoTotaleConSaldo(): void {
     if (this.importoInizializzato) return;
     const tot = this.saldoTotaleDisponibile;
-    const iniziale = Math.max(0, Math.floor(tot)); // entero para coincidir con 0 fracciones en el input
+    const iniziale = Math.max(0, Math.floor(tot));
     this.form.patchValue({ importoTotale: iniziale });
     this.importoInizializzato = true;
   }
@@ -361,21 +387,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     return out;
   }
 
-  private toIsoFromDmy(dmy: string): string {
-    const [dd, mm, yyyy] = dmy.split('-');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  private todayIso(): string {
-    const d = new Date();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-
   private buildRequest(): PreviewRequest | null {
     const v = this.form.getRawValue();
-
     const titolo = String(v.titoloCodice ?? '').trim();
     const dataIso = String(v.dataCompra ?? '').trim();
     const imp = Number(v.importoTotale);
@@ -391,7 +404,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       this.error = !dataIso ? 'Fecha inválida.' : 'Formulario inválido';
       return null;
     }
-
     const req: PreviewRequest = {
       titoloCodice: titolo,
       dataCompra: dataIso,
@@ -413,6 +425,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
+          // si tienes serie live, podrías actualizar chart aquí también
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
@@ -423,13 +436,11 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       this.error = msg;
       this.showToast(msg, 'error', 4000);
     };
-
     const blob = err?.error;
     if (blob instanceof Blob) {
       blob.text().then((t) => emit(t?.trim() || fallback));
       return;
     }
-
     if (err?.error) {
       const e = err.error as any;
       const msg =
@@ -439,11 +450,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         return;
       }
     }
-
     emit(err.statusText || err.message || fallback);
   }
 
-  // Toast Prime (MessageService)
+  // Toast con MessageService
   showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
     this.ms.add({
       severity: type === 'error' ? 'error' : type,
@@ -452,42 +462,42 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       life: ms,
     });
   }
-  hideToast(): void {
-    /* no-op: lo maneja p-toast */
-  }
 
-  // ---------------- getters extra ----------------
+  // ---------------- getters ----------------
   get saldoTotaleDisponibile(): number {
     return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
   }
-
   get badgeType(): 'ok' | 'warn' | 'neg' {
     const tot = this.saldoTotaleDisponibile;
     if (tot < 0) return 'neg';
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return imp > tot ? 'warn' : 'ok';
   }
-
   get diffLabel(): string {
     const diff = this.diffImporteSaldo();
     if (diff > 0) return 'Saldo restante';
     if (diff === 0) return 'Saldo exacto';
     return 'Falta';
   }
-
-  // Devuelve la lista deduplicada siempre que la vista la pida
-  // Devuelve la lista deduplicada siempre que la vista la pida
   get dedupedRows(): Array<AgenteSaldo & { quantitaTitoli?: number }> {
     return this.normalizeRows(this.rows);
   }
-
-  // TrackBy para que Angular no replique filas al reconciliar
   trackByIdCf(_i: number, r: AgenteSaldo & { codiceFiscale: string }): string {
     return `${r.id}|${r.codiceFiscale}`;
   }
-
   diffImporteSaldo(): number {
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return this.saldoTotaleDisponibile - imp;
+  }
+
+  // ---- util chart (llámalo si tienes serie)
+  setChart(labels: string[], compras: number[], saldi: number[]): void {
+    this.chartData = {
+      labels,
+      datasets: [
+        { label: 'Compras', data: compras, tension: 0.3, fill: true },
+        { label: 'Saldo disponible', data: saldi, tension: 0.3, yAxisID: 'y' },
+      ],
+    };
   }
 }
