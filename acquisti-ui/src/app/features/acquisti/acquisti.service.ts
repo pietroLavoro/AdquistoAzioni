@@ -51,6 +51,12 @@ export interface PreviewResponse {
   }[];
 }
 
+export interface AttivitaResponse {
+  labels: string[];
+  compras: number[];
+  saldo: number[];
+}
+
 export interface ConfermaRequest extends PreviewRequest {} // misma forma por ahora
 
 @Injectable({
@@ -112,4 +118,9 @@ export class AcquistiService {
   resetSaldos(): Observable<void> {
     return this.http.post<void>(`${this.baseUrl}/analisi/reset`, {});
   }
+
+  getAttivitaUltimi15Giorni(dataIso: string) {
+  const params = { alla: dataIso || new Date().toISOString().slice(0,10), days: 15 };
+  return this.http.get<AttivitaResponse>(`${this.baseUrl}/acquisti/attivita`, { params });
+}
 }

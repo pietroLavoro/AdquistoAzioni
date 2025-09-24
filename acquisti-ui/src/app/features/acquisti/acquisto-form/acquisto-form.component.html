@@ -156,17 +156,11 @@
     </p-card>
 
     <p-card class="card chart-card">
-      <div class="card-header tight"><h2>Actividad de compras (15 días)</h2></div>
+      <div class="card-header">
+        <h2>Actividad de compras (15 días)</h2>
+      </div>
       <div class="chart-wrap">
-        <p-chart
-          *ngIf="chartData"
-          type="line"
-          [data]="chartData"
-          [options]="chartOptions"
-        ></p-chart>
-        <div *ngIf="!chartData" class="muted" style="padding: 0.5rem 0">
-          Sin datos de gráfico aún
-        </div>
+        <p-chart #chart type="bar" [data]="chartData" [options]="chartOptions"> </p-chart>
       </div>
     </p-card>
   </section>

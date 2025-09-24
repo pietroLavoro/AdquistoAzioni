@@ -1,23 +1,23 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { interval, Subscription } from 'rxjs';
 import { finalize, startWith, switchMap } from 'rxjs/operators';
 
-/* PrimeNG standalone + módulos necesarios */
+/* PrimeNG (standalone o módulos) */
 import { Button } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { InputNumber } from 'primeng/inputnumber';
-import { TableModule } from 'primeng/table'; // (módulo)
+import { TableModule } from 'primeng/table';
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Card } from 'primeng/card';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Dialog } from 'primeng/dialog';
-import { ChartModule } from 'primeng/chart'; // (módulo wrapper de Chart.js)
+import { ChartModule } from 'primeng/chart';
 
 /* Servicio + DTOs */
 import {
@@ -60,25 +60,27 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
   styleUrls: ['./acquisto-form.component.css'],
 })
 export class AcquistoFormComponent implements OnInit, OnDestroy {
+  /* --------- inyección --------- */
   private fb = inject(FormBuilder);
   private ms = inject(MessageService);
   private confirm = inject(ConfirmationService);
-
   constructor(private api: AcquistiService) {}
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
+  @ViewChild('chart') chartComp?: any; // <p-chart #chart>
 
+  /* --------- estado base --------- */
   loading = false;
   error: string | null = null;
 
-  // ---- datos base
   titoli: Titolo[] = [];
   rows: Array<AgenteSaldo & { quantitaTitoli?: number }> = [];
-  polling?: Subscription;
-  pollingMs = 5000;
 
   agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
   numAgentiAttivi = 0;
+
+  polling?: Subscription;
+  pollingMs = 5000;
 
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
@@ -87,77 +89,73 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     quantitaTotale: [1, [Validators.required, Validators.min(1)]],
   });
 
-  // ---- preview
+  /* --------- preview --------- */
   preview: PreviewResponse | null = null;
   previewVisible = false;
 
-  // ---- tema
+  /* --------- tema --------- */
   isDark = false;
 
-  // ---- init importe con saldo (una sola vez)
+  /* --------- init importe con saldo (una sola vez) --------- */
   private importoInizializzato = false;
 
-  // ---- Chart.js (PrimeNG Chart)
-  chartData: any = null;
-  chartOptions: any = {
-    responsive: true,
-    maintainAspectRatio: false, // CLAVE para llenar el contenedor
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { position: 'top' },
-      tooltip: { enabled: true },
-      title: { display: false },
-    },
-    layout: { padding: { left: 8, right: 8, top: 4, bottom: 8 } },
-    scales: {
-      x: { ticks: { maxRotation: 0 }, grid: { display: false } },
-      y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.08)' } },
-    },
-  };
+  /* --------- Chart (PrimeNG Chart wrapper / Chart.js) --------- */
+  chartData: any = { labels: [], datasets: [] };
+  chartOptions: any;
 
-  // ---------------- lifecycle ----------------
+  /* ==================== lifecycle ==================== */
   ngOnInit(): void {
     this.refreshSaldosUnifiedOnce();
+    this.rebuildChartFromBackend(); // si el backend expone serie 15 días
     this.startUnifiedPolling();
     this.verAgentesActivos();
     this.initTheme();
-    // Demo temporal para ver el gráfico
-    this.setChart(
-      ['-14', '-12', '-10', '-8', '-6', '-4', '-2', 'Hoy'],
-      [5, 3, 6, 2, 7, 4, 5, 8], // compras
-      [5000, 4800, 4700, 4600, 4550, 4520, 4500, 4480] // saldos
-    );
-
+    this.ensureChartPlaceholder();
+    this.setDemoChart();//Quitar cuando tenga hecho el back point
+    
+    // Cargar títulos
     this.api.getTitoli().subscribe({
       next: (res) => {
         this.titoli = res ?? [];
-        const cur = this.form.get('titoloCodice')!.value;
-        if (!cur && this.titoli.length > 0) {
+        if (!this.form.get('titoloCodice')!.value && this.titoli.length) {
           this.form.patchValue({ titoloCodice: this.titoli[0].codice });
         }
       },
       error: (err) => this.setHttpError(err, 'No se pudieron cargar los títulos'),
     });
+
+    // Si aún no tienes endpoint del gráfico, deja un demo inicial:
+    // this.setChart(demoLabels, demoCompras, demoSaldo);
   }
 
   ngOnDestroy(): void {
     this.polling?.unsubscribe();
   }
 
-  // ---------------- tema oscuro ----------------
+  private setDemoChart(): void {
+    const labels = Array.from({ length: 15 }, (_, i) => (i === 14 ? 'Hoy' : `${-14 + i}`));
+    const compras = [0, 50, 0, 20, 0, 0, 60, 0, 0, 0, 80, 0, 0, 0, 0];
+    const saldo = [
+      4500, 4520, 4520, 4540, 4540, 4540, 4600, 4600, 4600, 4600, 4700, 4700, 4700, 4700, 4687.5,
+    ];
+    this.setChart(labels, compras, saldo);
+  }
+
+  /* ==================== Tema ==================== */
   private initTheme(): void {
     const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || saved === 'light') {
-      this.isDark = saved === 'dark';
-    } else {
-      this.isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-    }
+    this.isDark = saved
+      ? saved === 'dark'
+      : window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
     this.applyThemeClass();
   }
   toggleDark(): void {
     this.isDark = !this.isDark;
     localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
     this.applyThemeClass();
+    // re-sincronizar estilos del chart
+    this.buildChartOptions();
+    queueMicrotask(() => this.chartComp?.refresh?.());
   }
   private applyThemeClass(): void {
     const root = document.documentElement;
@@ -165,23 +163,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light');
   }
 
-  // ---------------- helpers ----------------
-  isTodaySelected(): boolean {
-    const d = (this.form.get('dataCompra')?.value || '').trim();
-    return !!d && d === this.todayIso();
-  }
-  private todayIso(): string {
-    const d = new Date();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-  private toIsoFromDmy(dmy: string): string {
-    const [dd, mm, yyyy] = dmy.split('-');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  // ---------------- acciones ----------------
+  /* ==================== Acciones ==================== */
   doPreview(): void {
     this.error = null;
     const req = this.buildRequest();
@@ -223,6 +205,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
           this.startUnifiedPolling();
           this.verAgentesActivos();
           this.listCmp?.load();
+          // refrescar gráfico si el backend lo expone
+          this.rebuildChartFromBackend();
         },
         error: (err) => {
           this.setHttpError(err, 'Error al confirmar compra');
@@ -258,6 +242,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         this.refreshSaldosUnifiedOnce();
         this.startUnifiedPolling();
         this.loading = false;
+        this.rebuildChartFromBackend();
       },
       error: (err) => {
         this.setHttpError(err, 'Error al sugerir fecha');
@@ -276,9 +261,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         this.agentiInfo = res;
         this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
       },
-      error: (err: HttpErrorResponse) => {
-        this.setHttpError(err, 'No se pudo obtener agentes activos');
-      },
+      error: (err: HttpErrorResponse) =>
+        this.setHttpError(err, 'No se pudo obtener agentes activos'),
     });
   }
 
@@ -292,7 +276,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       accept: () => this._resetSaldosReal(),
     });
   }
-
   private _resetSaldosReal(): void {
     this.error = null;
     this.api.resetSaldos().subscribe({
@@ -303,6 +286,7 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         this.startUnifiedPolling();
         this.verAgentesActivos();
         this.listCmp?.load();
+        this.rebuildChartFromBackend();
       },
       error: (err) => {
         this.setHttpError(err, 'Error al reiniciar saldos');
@@ -322,16 +306,14 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       accept: () => this.doConferma(),
     });
   }
-
   cancelarPreview(): void {
     this.preview = null;
     this.previewVisible = false;
   }
 
-  // ---------------- data helpers ----------------
+  /* ==================== Data ==================== */
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
-
     if (!dateIso) {
       this.rows = [];
       return;
@@ -342,8 +324,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
           this.tryInitImportoTotaleConSaldo();
-          // aquí podrías alimentar el gráfico si tu servicio tiene serie diaria de compras/saldos
-          // this.setChart(serie.labels, serie.compras, serie.saldi);
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
@@ -356,20 +336,39 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
             (res.agenti ?? []) as Array<AgenteSaldo & { quantitaTitoli?: number }>
           );
           this.tryInitImportoTotaleConSaldo();
-          // idem gráfico: setChart(...) si tienes la serie a la fecha
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
       });
     }
   }
 
-  // Inicializa el importe total con el saldo (enteros, sin negativos). 1 sola vez.
   private tryInitImportoTotaleConSaldo(): void {
     if (this.importoInizializzato) return;
     const tot = this.saldoTotaleDisponibile;
     const iniziale = Math.max(0, Math.floor(tot));
     this.form.patchValue({ importoTotale: iniziale });
     this.importoInizializzato = true;
+  }
+
+  /** Obtiene serie de últimos 15 días y actualiza el chart (si la API existe). */
+  private rebuildChartFromBackend(): void {
+    const dataIso = (this.form.get('dataCompra')?.value || '').trim();
+    // Si tu servicio aún no tiene este método, comenta este bloque:
+    if ((this.api as any)?.getAttivitaUltimi15Giorni) {
+      (this.api as any).getAttivitaUltimi15Giorni(dataIso).subscribe({
+        next: (res: any) => {
+          const labels: string[] = res?.labels ?? [];
+          const compras: number[] = res?.compras ?? Array(labels.length).fill(0);
+          const saldo: number[] = res?.saldo ?? Array(labels.length).fill(0);
+          // asegúrate que el último label diga “Hoy” si corresponde
+          if (this.isTodaySelected() && labels.length) labels[labels.length - 1] = 'Hoy';
+          this.setChart(labels, compras, saldo);
+        },
+        error: () => {
+          /* mantener gráfico actual */
+        },
+      });
+    }
   }
 
   private normalizeRows(
@@ -425,7 +424,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
-          // si tienes serie live, podrías actualizar chart aquí también
+          // refresca el gráfico si tu backend entrega serie live:
+          this.rebuildChartFromBackend();
         },
         error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
@@ -436,11 +436,13 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       this.error = msg;
       this.showToast(msg, 'error', 4000);
     };
+
     const blob = err?.error;
     if (blob instanceof Blob) {
       blob.text().then((t) => emit(t?.trim() || fallback));
       return;
     }
+
     if (err?.error) {
       const e = err.error as any;
       const msg =
@@ -453,7 +455,6 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     emit(err.statusText || err.message || fallback);
   }
 
-  // Toast con MessageService
   showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
     this.ms.add({
       severity: type === 'error' ? 'error' : type,
@@ -463,7 +464,176 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ---------------- getters ----------------
+  /* ==================== helpers ==================== */
+  isTodaySelected(): boolean {
+    const d = (this.form.get('dataCompra')?.value || '').trim();
+    return !!d && d === this.todayIso();
+  }
+  private todayIso(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+  private toIsoFromDmy(dmy: string): string {
+    const [dd, mm, yyyy] = dmy.split('-');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  /* ==================== Chart helpers ==================== */
+  private fmtEUR = (v: number) =>
+    new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 2,
+    }).format(v);
+
+  private chartColors() {
+    const text =
+      getComputedStyle(document.documentElement).getPropertyValue('--soft-text')?.trim() ||
+      '#e8ebf1';
+    const grid = 'rgba(255,255,255,.08)';
+    return { text, grid };
+  }
+
+  private buildChartOptions() {
+    const { text, grid } = this.chartColors();
+    const todayIdx = (this.chartData.labels || []).length - 1;
+
+    this.chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      parsing: false,
+      locale: 'es-ES',
+      scales: {
+        x: { ticks: { color: text }, grid: { color: grid } },
+        y: {
+          ticks: {
+            color: text,
+            callback: (v: number) => this.fmtEUR(Number(v)).replace(',00', ''),
+          },
+          grid: { color: grid },
+        },
+        ySaldo: {
+          position: 'right',
+          ticks: {
+            color: text,
+            callback: (v: number) => this.fmtEUR(Number(v)).replace(',00', ''),
+          },
+          grid: { drawOnChartArea: false, color: grid },
+        },
+      },
+      plugins: {
+        legend: { labels: { color: text, usePointStyle: true, boxHeight: 6 } },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (ctx: any) => {
+              const val = Number(ctx.raw?.y ?? ctx.parsed?.y ?? 0);
+              let base = ` ${ctx.dataset.label}: ${this.fmtEUR(val)}`;
+              const prev =
+                ctx.dataIndex > 0 ? Number(ctx.dataset.data[ctx.dataIndex - 1]?.y ?? 0) : null;
+              if (prev != null && ctx.dataset.label !== 'Compras (MA7)') {
+                const delta = val - prev;
+                base += ` (${delta >= 0 ? '+' : ''}${this.fmtEUR(delta)})`;
+              }
+              return base;
+            },
+          },
+        },
+        // Requiere registro de plugins en main.ts
+        annotation: {
+          annotations: {
+            hoy: {
+              type: 'line',
+              xMin: todayIdx,
+              xMax: todayIdx,
+              borderColor: 'rgba(255,255,255,.35)',
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              label: {
+                display: true,
+                content: 'HOY',
+                position: 'start',
+                color: '#bbb',
+                backgroundColor: 'transparent',
+                yAdjust: -12,
+              },
+            },
+          },
+        },
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+        },
+      },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    };
+  }
+
+  private ma(values: number[], window = 7): number[] {
+    const out = Array(values.length).fill(0);
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= window) sum -= values[i - window];
+      out[i] = i >= window - 1 ? +(sum / window).toFixed(2) : NaN;
+    }
+    return out;
+  }
+
+  setChart(labels: string[], compras: number[], saldo: number[]) {
+    const ma7 = this.ma(compras, 7);
+    this.chartData = {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Compras',
+          data: labels.map((_, i) => ({ x: labels[i], y: compras[i] ?? 0 })),
+          borderWidth: 0,
+          backgroundColor: 'rgba(0, 153, 255, .35)',
+          borderRadius: 6,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Compras (MA7)',
+          data: labels.map((_, i) => ({ x: labels[i], y: ma7[i] })),
+          spanGaps: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Saldo disponible',
+          data: labels.map((_, i) => ({ x: labels[i], y: saldo[i] ?? 0 })),
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false,
+          yAxisID: 'ySaldo',
+        },
+      ],
+    };
+    this.buildChartOptions();
+    queueMicrotask(() => this.chartComp?.refresh?.());
+  }
+
+  /** Si no hay datos del backend, muestra un placeholder para no ver el canvas vacío */
+  private ensureChartPlaceholder(): void {
+    const hasData = Array.isArray(this.chartData?.datasets) && this.chartData.datasets.length > 0;
+    if (hasData) return;
+
+    const labels = Array.from({ length: 15 }, (_, i) => (i === 14 ? 'Hoy' : `${-14 + i}`));
+    const compras = Array(15).fill(0);
+    const saldoLineal = Array(15).fill(this.saldoTotaleDisponibile || 0);
+
+    this.setChart(labels, compras, saldoLineal);
+  }
+
+  /* ==================== Getters ==================== */
   get saldoTotaleDisponibile(): number {
     return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
   }
@@ -488,16 +658,5 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   diffImporteSaldo(): number {
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return this.saldoTotaleDisponibile - imp;
-  }
-
-  // ---- util chart (llámalo si tienes serie)
-  setChart(labels: string[], compras: number[], saldi: number[]): void {
-    this.chartData = {
-      labels,
-      datasets: [
-        { label: 'Compras', data: compras, tension: 0.3, fill: true },
-        { label: 'Saldo disponible', data: saldi, tension: 0.3, yAxisID: 'y' },
-      ],
-    };
   }
 }

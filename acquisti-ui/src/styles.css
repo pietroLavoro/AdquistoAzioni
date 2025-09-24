@@ -252,3 +252,96 @@ html.dark .p-table   tbody > tr:hover > td { background: var(--soft-row-hover) !
    ================================ */
 .p-select .p-select-label { padding-right: 1.5rem; }
 .p-select .p-select-clear-icon { margin-left: .75rem; margin-right: .5rem; font-size: 1rem; opacity: .8; }
+
+/* ===== Modal / Dialog — DARK SOFT ===== */
+html.dark .p-dialog,
+html.dark .p-confirm-dialog {
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border: 1px solid var(--soft-border) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.55) !important;
+  overflow: hidden; /* redondeo limpio */
+}
+
+/* Backdrop más suave con blur */
+html.dark .p-dialog-mask.p-component-overlay {
+  background: rgba(10, 12, 16, .55) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Header */
+html.dark .p-dialog .p-dialog-header,
+html.dark .p-confirm-dialog .p-dialog-header{
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border-bottom: 1px solid var(--soft-border) !important;
+  padding: 1rem 1.25rem !important;
+}
+html.dark .p-dialog .p-dialog-title {
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+/* Botón de cerrar */
+html.dark .p-dialog .p-dialog-header-icon {
+  color: var(--soft-text) !important;
+  border-color: transparent !important;
+}
+html.dark .p-dialog .p-dialog-header-icon:hover {
+  filter: brightness(1.2);
+}
+
+/* Contenido */
+html.dark .p-dialog .p-dialog-content,
+html.dark .p-confirm-dialog .p-dialog-content{
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+/* Footer */
+html.dark .p-dialog .p-dialog-footer,
+html.dark .p-confirm-dialog .p-dialog-footer{
+  background: var(--soft-card) !important;
+  border-top: 1px solid var(--soft-border) !important;
+  padding: .75rem 1.25rem !important;
+}
+
+/* Tabla dentro del modal: misma piel que el resto */
+html.dark .p-dialog .p-table,
+html.dark .p-dialog .p-datatable {
+  background: var(--soft-card) !important;
+  border: 1px solid var(--soft-border) !important;
+  border-radius: 10px !important;
+}
+html.dark .p-dialog .p-table thead > tr > th,
+html.dark .p-dialog .p-datatable thead > tr > th{
+  background: var(--soft-bg-2) !important;
+  color: var(--soft-text) !important;
+  border-color: var(--soft-border) !important;
+}
+html.dark .p-dialog .p-table tbody > tr > td,
+html.dark .p-dialog .p-datatable tbody > tr > td{
+  background: var(--soft-card) !important;
+  color: var(--soft-text) !important;
+  border-color: var(--soft-border) !important;
+}
+html.dark .p-dialog .p-table tbody > tr:hover > td,
+html.dark .p-dialog .p-datatable tbody > tr:hover > td{
+  background: var(--soft-row-hover) !important;
+}
+
+/* Chips de info arriba (Título, Fecha, etc.) más legibles */
+html.dark .p-dialog .muted { color: var(--soft-muted); }
+
+/* Botones del footer: separaciones y hover sutil */
+html.dark .p-dialog .p-dialog-footer .p-button + .p-button{ margin-left: .5rem; }
+html.dark .p-dialog .p-button:hover{ filter: brightness(1.1); }
+
+/* Scrollbars dentro del modal (opcionales, discretos) */
+html.dark .p-dialog ::-webkit-scrollbar{ height: 8px; width: 8px; }
+html.dark .p-dialog ::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.18);
+  border-radius: 8px;
+}
