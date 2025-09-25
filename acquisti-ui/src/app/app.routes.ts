@@ -6,5 +6,6 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'acquisti/nuovo' },
   { path: 'acquisti', component: AcquistiListComponent },
   { path: 'acquisti/nuovo', component: AcquistoFormComponent },
+  { path: 'login', loadComponent: () => import('./login').then(m => m.default) },
   { path: '**', redirectTo: 'acquisti/nuovo' },
 ];
