@@ -1,23 +1,23 @@
-import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
+import { Component, OnInit, OnDestroy, ViewChild, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-
 import { interval, Subscription } from 'rxjs';
 import { finalize, startWith, switchMap } from 'rxjs/operators';
 
-/* PrimeNG: usar componentes standalone coherentes con el HTML */
+/* PrimeNG (standalone) */
 import { Button } from 'primeng/button';
 import { Select } from 'primeng/select';
 import { DatePicker } from 'primeng/datepicker';
 import { InputNumber } from 'primeng/inputnumber';
-import { TableModule } from 'primeng/table'; // Table NO es standalone
+import { TableModule } from 'primeng/table';
 import { Toast } from 'primeng/toast';
 import { ConfirmDialog } from 'primeng/confirmdialog';
 import { Card } from 'primeng/card';
 import { ProgressSpinner } from 'primeng/progressspinner';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Dialog } from 'primeng/dialog';
+import { ChartModule } from 'primeng/chart';
 
 /* Servicio + DTOs */
 import {
@@ -27,10 +27,10 @@ import {
   PreviewRequest,
   PreviewResponse,
   Titolo,
-} from '../../acquisti/acquisti.service';
+} from '../acquisti.service';
 
-/* Tu lista standalone */
-import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-list.component';
+/* Lista standalone */
+import { AcquistiListComponent } from '../acquisti-list/acquisti-list.component';
 
 @Component({
   selector: 'app-acquisto-form',
@@ -39,9 +39,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    DecimalPipe,
-
-    // PrimeNG (standalone)
+    // PrimeNG
     Card,
     Button,
     Select,
@@ -52,7 +50,7 @@ import { AcquistiListComponent } from '../../acquisti/acquisti-list/acquisti-lis
     Toast,
     Dialog,
     ConfirmDialog,
-
+    ChartModule,
     // propios
     AcquistiListComponent,
   ],
@@ -64,22 +62,21 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private ms = inject(MessageService);
   private confirm = inject(ConfirmationService);
-
   constructor(private api: AcquistiService) {}
 
   @ViewChild(AcquistiListComponent) listCmp?: AcquistiListComponent;
+  @ViewChild('chart') chartComp?: any; // <p-chart #chart>
 
   loading = false;
   error: string | null = null;
 
   titoli: Titolo[] = [];
-  // Permitimos un campo opcional "quantitaTitoli" por agente.
   rows: Array<AgenteSaldo & { quantitaTitoli?: number }> = [];
+
+  numAgentiAttivi = 0;
+
   polling?: Subscription;
   pollingMs = 5000;
-
-  agentiInfo?: { data: string; numAgenti: number; agenti: AgenteSaldo[] };
-  numAgentiAttivi = 0;
 
   form = this.fb.nonNullable.group({
     titoloCodice: ['', Validators.required],
@@ -91,73 +88,41 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   preview: PreviewResponse | null = null;
   previewVisible = false;
 
-  // (estos ya no se usan con p-toast, puedes borrarlos si quieres)
-  toastMsg = '';
-  toastType: 'success' | 'info' | 'error' = 'info';
-  toastVisible = false;
-  private toastTimer?: any;
-
-  // Tema oscuro
   isDark = false;
-
-  // Inicialización de importe total con saldo (solo una vez)
   private importoInizializzato = false;
 
-  // ---------------- lifecycle ----------------
+  chartData: any = { labels: [], datasets: [] };
+  chartOptions: any;
+
   ngOnInit(): void {
     this.refreshSaldosUnifiedOnce();
+    this.rebuildChartFromBackend();
     this.startUnifiedPolling();
-    this.verAgentesActivos();
     this.initTheme();
+    this.ensureChartPlaceholder();
+    this.setDemoChart(); // quitar cuando haya endpoint real
 
+    // Cargar títulos
     this.api.getTitoli().subscribe({
-      next: (res) => {
+      next: (res: Titolo[]) => {
         this.titoli = res ?? [];
-        const cur = this.form.get('titoloCodice')!.value;
-        if (!cur && this.titoli.length > 0) {
+        if (!this.form.get('titoloCodice')!.value && this.titoli.length) {
           this.form.patchValue({ titoloCodice: this.titoli[0].codice });
         }
       },
-      error: (err) => this.setHttpError(err, 'No se pudieron cargar los títulos'),
+      error: (err: HttpErrorResponse) =>
+        this.setHttpError(err, 'No se pudieron cargar los títulos'),
     });
   }
 
   ngOnDestroy(): void {
     this.polling?.unsubscribe();
-    this.hideToast();
   }
 
-  // ---------------- tema oscuro ----------------
-  private initTheme(): void {
-    const saved = localStorage.getItem('theme'); // 'dark' | 'light' | null
-    if (saved === 'dark' || saved === 'light') {
-      this.isDark = saved === 'dark';
-    } else {
-      // si no hay preferencia guardada, usa la del sistema
-      this.isDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-    }
-    this.applyThemeClass();
-  }
+  /* =======================================================
+   *               Acciones principales
+   * ======================================================= */
 
-  toggleDark(): void {
-    this.isDark = !this.isDark;
-    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
-    this.applyThemeClass();
-  }
-
-  private applyThemeClass(): void {
-    const root = document.documentElement; // <html>
-    root.classList.toggle('dark', this.isDark); // clase para CSS
-    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light'); // atributo opcional
-  }
-
-  // ---------------- helpers UI ----------------
-  isTodaySelected(): boolean {
-    const d = (this.form.get('dataCompra')?.value || '').trim();
-    return !!d && d === this.todayIso();
-  }
-
-  // ---------------- acciones ----------------
   doPreview(): void {
     this.error = null;
     const req = this.buildRequest();
@@ -168,15 +133,14 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       .preview(req)
       .pipe(finalize(() => (this.loading = false)))
       .subscribe({
-        next: (resp) => {
+        next: (resp: PreviewResponse) => {
           this.preview = resp;
-          this.previewVisible = true; // abrir popup
+          this.previewVisible = true;
           this.showToast('Previsualización OK', 'info');
         },
         error: (err: HttpErrorResponse) => {
           this.preview = null;
           this.setHttpError(err, 'Error al previsualizar');
-          this.showToast(this.error || 'Error al previsualizar', 'error', 4000);
         },
       });
   }
@@ -197,13 +161,10 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
           this.showToast('Compra confirmada', 'success');
           this.refreshSaldosUnifiedOnce();
           this.startUnifiedPolling();
-          this.verAgentesActivos();
           this.listCmp?.load();
+          this.rebuildChartFromBackend();
         },
-        error: (err) => {
-          this.setHttpError(err, 'Error al confirmar compra');
-          this.showToast(this.error || 'Error al confirmar compra', 'error', 4000);
-        },
+        error: (err: HttpErrorResponse) => this.setHttpError(err, 'Error al confirmar compra'),
       });
   }
 
@@ -214,47 +175,43 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
   sugerirFecha(): void {
     this.error = null;
 
-    const titolo = (this.form.get('titoloCodice')?.value as string | undefined)?.trim();
-    if (!titolo) {
+    // 1) tomar el valor del form
+    let raw = (this.form.get('titoloCodice')?.value ?? '').toString().trim();
+    if (!raw) {
       this.error = 'Debe seleccionar un título';
       return;
     }
 
-    const n = this.agentiInfo?.numAgenti ?? this.agentiInfo?.agenti?.length ?? 0;
+    // 2) normalizar: si viene "Apple Inc._AAPL" o "AAPL - Apple"
+    //   nos quedamos solo con el código del final
+    //   (puedes ajustar la heurística si cambias los datos)
+    let codice = raw;
+    if (raw.includes('_')) {
+      const parts = raw.split('_');
+      codice = parts[parts.length - 1].trim();
+    } else if (raw.includes('-')) {
+      // ejemplo: "AAPL - Apple Inc."
+      codice = raw.split('-')[0].trim();
+    }
+
+    const n = Math.max(0, Number(this.numAgentiAttivi) || 0);
     if (n <= 0) {
       this.error = 'No hay agentes activos para sugerir una fecha.';
       return;
     }
 
     this.loading = true;
-    this.api.suggestData(titolo, n).subscribe({
-      next: (sug: SuggestimentoData) => {
-        const iso = this.toIsoFromDmy(sug.dataSuggerita);
-        this.form.patchValue({ dataCompra: iso });
-        this.verAgentesActivos();
+    this.api.suggestData(codice, n).subscribe({
+      next: (sug) => {
+        this.form.patchValue({ dataCompra: sug.date });
         this.refreshSaldosUnifiedOnce();
         this.startUnifiedPolling();
         this.loading = false;
+        this.rebuildChartFromBackend();
       },
       error: (err) => {
         this.setHttpError(err, 'Error al sugerir fecha');
         this.loading = false;
-      },
-    });
-  }
-
-  verAgentesActivos(): void {
-    this.error = null;
-    const dataIso = ((this.form.get('dataCompra')?.value as string) || '').trim();
-    if (!dataIso) return;
-
-    this.api.getAgentiAttiviAlla(dataIso).subscribe({
-      next: (res) => {
-        this.agentiInfo = res;
-        this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
-      },
-      error: (err: HttpErrorResponse) => {
-        this.setHttpError(err, 'No se pudo obtener agentes activos');
       },
     });
   }
@@ -280,11 +237,9 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         this.startUnifiedPolling();
         this.verAgentesActivos();
         this.listCmp?.load();
+        this.rebuildChartFromBackend();
       },
-      error: (err) => {
-        this.setHttpError(err, 'Error al reiniciar saldos');
-        this.showToast(this.error || 'Error al reiniciar saldos', 'error', 4000);
-      },
+      error: (err: HttpErrorResponse) => this.setHttpError(err, 'Error al reiniciar saldos'),
     });
   }
 
@@ -305,46 +260,74 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     this.previewVisible = false;
   }
 
-  // ---------------- data helpers ----------------
+  /* =======================================================
+   *               Carga de datos / polling
+   * ======================================================= */
+
   private refreshSaldosUnifiedOnce(): void {
     const dateIso = (this.form.get('dataCompra')?.value || '').trim();
-
     if (!dateIso) {
       this.rows = [];
+      this.numAgentiAttivi = 0;
       return;
     }
 
     if (this.isTodaySelected()) {
       this.api.getSaldiAgenti().subscribe({
-        next: (res) => {
+        next: (res: AgenteSaldo[]) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
-          this.tryInitImportoTotaleConSaldo(); // inicializa importe total una sola vez
+          this.numAgentiAttivi = this.rows.length;
+          this.tryInitImportoTotaleConSaldo();
         },
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
+        error: (err: HttpErrorResponse) =>
+          this.setHttpError(err, 'No se pudieron obtener saldos en vivo'),
       });
     } else {
-      this.api.getAgentiAttiviAlla(dateIso).subscribe({
-        next: (res) => {
-          this.agentiInfo = res;
-          this.numAgentiAttivi = res?.numAgenti ?? res?.agenti?.length ?? 0;
-          this.rows = this.normalizeRows(
-            (res.agenti ?? []) as Array<AgenteSaldo & { quantitaTitoli?: number }>
-          );
-          this.tryInitImportoTotaleConSaldo(); // idem para “a la fecha”
+      this.rows = [];
+      this.numAgentiAttivi = 0;
+    }
+  }
+
+  private verAgentesActivos(): void {
+    const d = (this.form.get('dataCompra')?.value || '').trim();
+    if (!d) {
+      this.numAgentiAttivi = 0;
+      return;
+    }
+    // ⬇⬇⬇ nombre correcto del método del service
+    this.api.getAgentiAttivi(d).subscribe({
+      next: (n: number) => (this.numAgentiAttivi = Number(n) || 0),
+      error: () => (this.numAgentiAttivi = 0),
+    });
+  }
+
+  private tryInitImportoTotaleConSaldo(): void {
+    if (this.importoInizializzato) return;
+    const tot = this.saldoTotaleDisponibile;
+    const iniziale = Math.max(0, Math.floor(tot));
+    this.form.patchValue({ importoTotale: iniziale });
+    this.importoInizializzato = true;
+  }
+
+  private rebuildChartFromBackend(): void {
+    const dataIso = (this.form.get('dataCompra')?.value || '').trim();
+    if ((this.api as any)?.getAttivitaUltimi15Giorni) {
+      (this.api as any).getAttivitaUltimi15Giorni(dataIso).subscribe({
+        next: (res: any) => {
+          const labels: string[] = res?.labels ?? [];
+          const compras: number[] = res?.compras ?? Array(labels.length).fill(0);
+          const saldo: number[] = res?.saldo ?? Array(labels.length).fill(0);
+          if (this.isTodaySelected() && labels.length) labels[labels.length - 1] = 'Hoy';
+          this.setChart(labels, compras, saldo);
         },
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos a la fecha'),
+        error: () => {},
       });
     }
   }
 
-  // Inicializa el importe total con el saldo (enteros, sin negativos). Se ejecuta 1 sola vez.
-  private tryInitImportoTotaleConSaldo(): void {
-    if (this.importoInizializzato) return;
-    const tot = this.saldoTotaleDisponibile;
-    const iniziale = Math.max(0, Math.floor(tot)); // entero para coincidir con 0 fracciones en el input
-    this.form.patchValue({ importoTotale: iniziale });
-    this.importoInizializzato = true;
-  }
+  /* =======================================================
+   *                    Utilidades
+   * ======================================================= */
 
   private normalizeRows(
     arr: Array<AgenteSaldo & { quantitaTitoli?: number }>
@@ -361,21 +344,8 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
     return out;
   }
 
-  private toIsoFromDmy(dmy: string): string {
-    const [dd, mm, yyyy] = dmy.split('-');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  private todayIso(): string {
-    const d = new Date();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${d.getFullYear()}-${mm}-${dd}`;
-  }
-
   private buildRequest(): PreviewRequest | null {
     const v = this.form.getRawValue();
-
     const titolo = String(v.titoloCodice ?? '').trim();
     const dataIso = String(v.dataCompra ?? '').trim();
     const imp = Number(v.importoTotale);
@@ -392,11 +362,12 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       return null;
     }
 
+    // ⬇⬇⬇ keys correctas del PreviewRequest (service)
     const req: PreviewRequest = {
       titoloCodice: titolo,
-      dataCompra: dataIso,
-      importoTotale: imp,
-      quantitaTotale: qta,
+      data: dataIso,
+      importo: imp,
+      quantita: qta,
     };
     return req;
   }
@@ -411,39 +382,27 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
         switchMap(() => this.api.getSaldiAgenti())
       )
       .subscribe({
-        next: (res) => {
+        next: (res: AgenteSaldo[]) => {
           this.rows = this.normalizeRows(res as Array<AgenteSaldo & { quantitaTitoli?: number }>);
+          this.numAgentiAttivi = this.rows.length;
+          this.rebuildChartFromBackend();
         },
-        error: (err) => this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
+        error: (err: HttpErrorResponse) =>
+          this.setHttpError(err, 'No se pudieron obtener saldos (polling)'),
       });
   }
 
   private setHttpError(err: HttpErrorResponse, fallback = 'Error'): void {
-    const emit = (msg: string) => {
-      this.error = msg;
-      this.showToast(msg, 'error', 4000);
-    };
-
-    const blob = err?.error;
-    if (blob instanceof Blob) {
-      blob.text().then((t) => emit(t?.trim() || fallback));
-      return;
-    }
-
-    if (err?.error) {
-      const e = err.error as any;
-      const msg =
-        (typeof e === 'string' && e.trim()) || e?.message || e?.code || e?.detail || e?.error || '';
-      if (msg) {
-        emit(msg);
-        return;
-      }
-    }
-
-    emit(err.statusText || err.message || fallback);
+    const msg =
+      (typeof err.error === 'string' && err.error.trim()) ||
+      (err.error && (err.error.message || err.error.detail || err.error.code || err.error.error)) ||
+      err.statusText ||
+      err.message ||
+      fallback;
+    this.error = msg;
+    this.showToast(msg, 'error', 4000);
   }
 
-  // Toast Prime (MessageService)
   showToast(msg: string, type: 'success' | 'info' | 'error' = 'info', ms = 2500): void {
     this.ms.add({
       severity: type === 'error' ? 'error' : type,
@@ -452,42 +411,179 @@ export class AcquistoFormComponent implements OnInit, OnDestroy {
       life: ms,
     });
   }
-  hideToast(): void {
-    /* no-op: lo maneja p-toast */
+
+  isTodaySelected(): boolean {
+    const d = (this.form.get('dataCompra')?.value || '').trim();
+    return !!d && d === this.todayIso();
+  }
+  private todayIso(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
   }
 
-  // ---------------- getters extra ----------------
+  private fmtEUR = (v: number) =>
+    new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 2,
+    }).format(v);
+
+  private chartColors() {
+    const text =
+      getComputedStyle(document.documentElement).getPropertyValue('--soft-text')?.trim() ||
+      '#e8ebf1';
+    const grid = 'rgba(255,255,255,.08)';
+    return { text, grid };
+  }
+
+  private buildChartOptions() {
+    const { text, grid } = this.chartColors();
+    this.chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      parsing: false,
+      locale: 'es-ES',
+      scales: {
+        x: { ticks: { color: text }, grid: { color: grid } },
+        y: {
+          ticks: {
+            color: text,
+            callback: (v: number) => this.fmtEUR(Number(v)).replace(',00', ''),
+          },
+          grid: { color: grid },
+        },
+        ySaldo: {
+          position: 'right',
+          ticks: {
+            color: text,
+            callback: (v: number) => this.fmtEUR(Number(v)).replace(',00', ''),
+          },
+          grid: { drawOnChartArea: false, color: grid },
+        },
+      },
+      plugins: {
+        legend: { labels: { color: text, usePointStyle: true, boxHeight: 6 } },
+        tooltip: { mode: 'index', intersect: false },
+      },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    };
+  }
+
+  private ma(values: number[], window = 7): number[] {
+    const out = Array(values.length).fill(0);
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= window) sum -= values[i - window];
+      out[i] = i >= window - 1 ? +(sum / window).toFixed(2) : NaN;
+    }
+    return out;
+  }
+
+  setChart(labels: string[], compras: number[], saldo: number[]) {
+    const ma7 = this.ma(compras, 7);
+    this.chartData = {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Compras',
+          data: labels.map((_, i) => ({ x: labels[i], y: compras[i] ?? 0 })),
+          borderWidth: 0,
+          backgroundColor: 'rgba(0, 153, 255, .35)',
+          borderRadius: 6,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Compras (MA7)',
+          data: labels.map((_, i) => ({ x: labels[i], y: ma7[i] })),
+          spanGaps: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Saldo disponible',
+          data: labels.map((_, i) => ({ x: labels[i], y: saldo[i] ?? 0 })),
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: false,
+          yAxisID: 'ySaldo',
+        },
+      ],
+    };
+    this.buildChartOptions();
+    queueMicrotask(() => this.chartComp?.refresh?.());
+  }
+
+  private ensureChartPlaceholder(): void {
+    const hasData = Array.isArray(this.chartData?.datasets) && this.chartData.datasets.length > 0;
+    if (hasData) return;
+    const labels = Array.from({ length: 15 }, (_, i) => (i === 14 ? 'Hoy' : `${-14 + i}`));
+    const compras = Array(15).fill(0);
+    const saldoLineal = Array(15).fill(this.saldoTotaleDisponibile || 0);
+    this.setChart(labels, compras, saldoLineal);
+  }
+
   get saldoTotaleDisponibile(): number {
-    return (this.rows || []).reduce((acc, a) => acc + (a?.saldoDisponibile ?? 0), 0);
+    // ⬇⬇⬇ campo correcto: 'disponibile'
+    return (this.rows || []).reduce((acc, a) => acc + (a?.disponibile ?? 0), 0);
   }
-
   get badgeType(): 'ok' | 'warn' | 'neg' {
     const tot = this.saldoTotaleDisponibile;
     if (tot < 0) return 'neg';
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return imp > tot ? 'warn' : 'ok';
   }
-
   get diffLabel(): string {
     const diff = this.diffImporteSaldo();
     if (diff > 0) return 'Saldo restante';
     if (diff === 0) return 'Saldo exacto';
     return 'Falta';
   }
-
-  // Devuelve la lista deduplicada siempre que la vista la pida
-  // Devuelve la lista deduplicada siempre que la vista la pida
   get dedupedRows(): Array<AgenteSaldo & { quantitaTitoli?: number }> {
     return this.normalizeRows(this.rows);
   }
-
-  // TrackBy para que Angular no replique filas al reconciliar
-  trackByIdCf(_i: number, r: AgenteSaldo & { codiceFiscale: string }): string {
-    return `${r.id}|${r.codiceFiscale}`;
+  trackByIdCf(_i: number, r: AgenteSaldo & { cf?: string }): string {
+    return `${r.id}|${r.cf ?? ''}`;
   }
-
   diffImporteSaldo(): number {
     const imp = Number(this.form.get('importoTotale')?.value) || 0;
     return this.saldoTotaleDisponibile - imp;
+  }
+
+  /* ================== Tema ================== */
+
+  private setDemoChart(): void {
+    const labels = Array.from({ length: 15 }, (_, i) => (i === 14 ? 'Hoy' : `${-14 + i}`));
+    const compras = [0, 50, 0, 20, 0, 0, 60, 0, 0, 0, 80, 0, 0, 0, 0];
+    const saldo = [
+      4500, 4520, 4520, 4540, 4540, 4540, 4600, 4600, 4600, 4600, 4700, 4700, 4700, 4700, 4687.5,
+    ];
+    this.setChart(labels as any, compras as any, saldo as any);
+  }
+
+  private initTheme(): void {
+    const saved = localStorage.getItem('theme');
+    this.isDark = saved
+      ? saved === 'dark'
+      : window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    this.applyThemeClass();
+  }
+  toggleDark(): void {
+    this.isDark = !this.isDark;
+    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+    this.applyThemeClass();
+    this.buildChartOptions();
+    queueMicrotask(() => this.chartComp?.refresh?.());
+  }
+  private applyThemeClass(): void {
+    const root = document.documentElement;
+    root.classList.toggle('dark', this.isDark);
+    root.setAttribute('data-p-theme', this.isDark ? 'dark' : 'light');
   }
 }
