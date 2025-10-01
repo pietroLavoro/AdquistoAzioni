@@ -1,181 +1,152 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, throwError, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
-/* ===================== DTOs ===================== */
-export interface Summary {
-  id: number;
-  titoloCodice: string;
-  titoloDescrizione: string;
-  dataCompra: string;         // yyyy-MM-dd
-  quantitaTotale: number;
-  importoTotale: number;
-}
+// ---- API base ----
+const API_BASE = '/api'; // use Angular proxy to route to http://localhost:8080
 
+/* ================== DTOs del backend ================== */
 export interface Titolo {
+  id: number;
   codice: string;
   descrizione: string;
+  dataEmissione: string; // ISO yyyy-MM-dd
 }
 
-export interface AgenteSaldo {
-  id: number;
-  cf: string;                 // codice fiscale
-  disponibile: number;        // saldo disponible
-}
-
-export interface SuggestimentoData {
-  date: string;               // yyyy-MM-dd
-}
-
-/** Forma “canónica” que usa el front nuevo */
 export interface PreviewRequest {
-  titoloCodice: string;
-  data: string;               // yyyy-MM-dd
-  importo: number;
+  dataAcquisto: string;     // ISO yyyy-MM-dd
+  quantitaTotale: number;
+  importoTotale: number;
+  titoloId: number;
+}
+
+export interface RipartoItem {
+  agenteId: number;
   quantita: number;
+  importo: number;
+  movimentoId?: number | null;
 }
 
-/** Respuesta con aliases para que el template no falle si el back usa nombres viejos */
-export interface PreviewResponse {
-  // canónicos
-  titoloCodice: string;
-  data?: string;
-  importo?: number;
-  quantita?: number;
-
-  // aliases (legacy / usados por el HTML)
-  dataCompra?: string;
-  importoTotale?: number;
-  quantitaTotale?: number;
-
-  riparto: Array<{
-    agenteId: number;
-    codiceFiscale: string;
-    importoAgente: number;
-    quantitaAgente: number;
-  }>;
+export interface BackendPreviewResponse {
+  movimentoTitoloId?: number | null;
+  titoloId: number;
+  dataAcquisto: string; // ISO
+  quantitaTotale: number;
+  importoTotale: number;
+  riparti: RipartoItem[];
 }
 
-export interface Attivita15g {
-  labels: string[];
-  compras: number[];
-  saldo: number[];
+export interface BackendAgenteSaldo {
+  id: number;
+  codiceFiscale: string;
+  saldoDisponibile: number;
+  quantitaTitoli?: number;
 }
 
-/* ===================== Service ===================== */
+/* ================== Tipos esperados por tus componentes ================== */
+// Visto en errores: Summary, SuggestionData y propiedades como titoloCodice, dataCompra, disponibile, list(), suggestData(), resetSaldos()
+export type Summary = Titolo[];
+
+export interface SuggestionData {
+  data: string;         // ISO yyyy-MM-dd sugerida
+  titoloCodice?: string;
+}
+
+// Respuesta que usan los componentes (extiende y agrega alias legibles)
+export interface PreviewResponse extends BackendPreviewResponse {
+  titoloCodice?: string | null;  // alias para UI
+  dataCompra?: string | null;    // alias para UI (igual a dataAcquisto)
+}
+
+export interface AgenteSaldo extends BackendAgenteSaldo {
+  disponibile: number; // alias de saldoDisponibile para la UI
+}
+
 @Injectable({ providedIn: 'root' })
 export class AcquistiService {
-  private base = '/api';
-
   constructor(private http: HttpClient) {}
 
-  /* -------- util error handler -------- */
-  private handle = (err: HttpErrorResponse) => {
-    const msg =
-      (err?.error && (err.error.message || err.error.detail || err.error)) ||
-      err.statusText ||
-      err.message;
-    return throwError(() => new Error((msg || 'Error de red').toString()));
-  };
-
-  /* -------- util normalizadores -------- */
-
-  /** Adapta el body a lo que podría esperar un backend legacy */
-  private toLegacyPayload(req: PreviewRequest) {
-    return {
-      // siempre enviamos los 4 nombres legacy
-      titoloCodice: req.titoloCodice,
-      dataCompra: (req as any).dataCompra ?? req.data,
-      importoTotale: (req as any).importoTotale ?? req.importo,
-      quantitaTotale: (req as any).quantitaTotale ?? req.quantita,
-      // y, por compatibilidad, incluimos los nuevos también:
-      data: req.data,
-      importo: req.importo,
-      quantita: req.quantita,
-    };
+  /* ================== Titoli ================== */
+  listTitoli(): Observable<Titolo[]> {
+    return this.http.get<Titolo[]>(`${API_BASE}/titoli`).pipe(catchError(this.handle));
   }
+  // Alias para componentes que llaman service.list()
+  list(): Observable<Summary> { return this.listTitoli(); }
 
-  /** Garantiza que la respuesta tenga también los alias usados por el HTML */
-  private withResponseAliases = (resp: PreviewResponse): PreviewResponse => {
-    const dataCompra = resp.dataCompra ?? resp.data;
-    const importoTotale = resp.importoTotale ?? resp.importo;
-    const quantitaTotale = resp.quantitaTotale ?? resp.quantita;
-    return { ...resp, dataCompra, importoTotale, quantitaTotale };
-  };
-
-  /* ----------------- API ----------------- */
-
-  list(): Observable<Summary[]> {
-    return this.http.get<Summary[]>(`${this.base}/acquisto`).pipe(catchError(this.handle));
-  }
-
-  getTitoli(): Observable<Titolo[]> {
-    return this.http.get<Titolo[]>(`${this.base}/titolo`).pipe(catchError(this.handle));
-  }
-
-  getSaldiAgenti(): Observable<AgenteSaldo[]> {
-    return this.http.get<AgenteSaldo[]>(`${this.base}/analisi/saldi`).pipe(catchError(this.handle));
-  }
-
-  /** Detalle de agentes activos en una fecha */
-  getAgentiAttiviAlla(dataIso: string) {
-    const params = new HttpParams().set('data', dataIso);
-    return this.http
-      .get<{ data: string; numAgenti: number; agenti: AgenteSaldo[] }>(
-        `${this.base}/analisi/agenti-attivi`,
-        { params }
-      )
-      .pipe(catchError(this.handle));
-  }
-
-  /** Solo el número de agentes activos (alias para el componente) */
-  getAgentiAttivi(dataIso: string): Observable<number> {
-    return this.getAgentiAttiviAlla(dataIso).pipe(
-      map(r => r?.numAgenti ?? 0),
-      catchError(() => of(0))
-    );
-  }
-
-  /** Sugerir fecha */
-  suggestData(codiceTitolo: string, numAgenti: number): Observable<SuggestimentoData> {
-    const params = new HttpParams()
-      .set('codiceTitolo', codiceTitolo)
-      .set('numAgenti', String(numAgenti));
-    return this.http
-      .get<SuggestimentoData>(`${this.base}/analisi/suggerisci-data`, { params })
-      .pipe(catchError(this.handle));
-  }
-
-  /** Previsualizar compra */
+  /* ================== Preview / Conferma ================== */
   preview(req: PreviewRequest): Observable<PreviewResponse> {
-    const payload = this.toLegacyPayload(req);
     return this.http
-      .post<PreviewResponse>(`${this.base}/acquisto/preview`, payload)
+      .post<BackendPreviewResponse>(`${API_BASE}/acquisti/preview`, req)
       .pipe(
-        map(this.withResponseAliases),
+        map((resp) => ({
+          ...resp,
+          dataCompra: resp.dataAcquisto,
+          // titoloCodice: podría setearse en el componente cuando tenga el título seleccionado
+          titoloCodice: null,
+        })),
         catchError(this.handle)
       );
   }
 
-  /** Confirmar compra */
-  conferma(req: PreviewRequest): Observable<void> {
-    const payload = this.toLegacyPayload(req);
+  conferma(req: PreviewRequest): Observable<PreviewResponse> {
     return this.http
-      .post<void>(`${this.base}/acquisto/conferma`, payload)
-      .pipe(catchError(this.handle));
+      .post<BackendPreviewResponse>(`${API_BASE}/acquisti`, req)
+      .pipe(
+        map((resp) => ({
+          ...resp,
+          dataCompra: resp.dataAcquisto,
+          titoloCodice: null,
+        })),
+        catchError(this.handle)
+      );
   }
 
-  /** Reiniciar saldos (testing) */
-  resetSaldos(): Observable<void> {
-    return this.http.post<void>(`${this.base}/analisi/reset`, {}).pipe(catchError(this.handle));
-  }
-
-  /** Actividad de los últimos 15 días (labels, compras, saldo) */
-  getAttivita15g(dataIso?: string): Observable<Attivita15g> {
+  /* ================== Saldos ================== */
+  getSaldiAgenti(dataIso?: string): Observable<AgenteSaldo[]> {
     const params = dataIso ? new HttpParams().set('data', dataIso) : undefined;
     return this.http
-      .get<Attivita15g>(`${this.base}/analisi/ultimi-15-giorni`, { params })
-      .pipe(catchError(this.handle));
+      .get<BackendAgenteSaldo[]>(`${API_BASE}/agenti/saldi`, { params })
+      .pipe(
+        map(rows => rows.map(r => ({ ...r, disponibile: r.saldoDisponibile }))),
+        catchError(this.handle)
+      );
+  }
+  // Helpers que tus componentes podrían estar invocando
+  getSaldiTotaleDisponibile(dataIso?: string): Observable<number> {
+    return this.getSaldiAgenti(dataIso).pipe(
+      map(rows => rows.reduce((acc, r) => acc + (r.disponibile || 0), 0))
+    );
+  }
+  resetSaldos(): void { /* no-op para compatibilidad */ }
+
+  /* ================== Sugerencias ================== */
+  suggestData(titolo?: Titolo): Observable<SuggestionData> {
+    if (!titolo) return of({ data: this.todayIso(), titoloCodice: undefined });
+    // Sugerimos max(hoy, dataEmissione del titolo)
+    const d = new Date(titolo.dataEmissione);
+    const t = new Date();
+    const sug = (t > d ? t : d);
+    return of({ data: this.toIsoDate(sug), titoloCodice: titolo.codice });
+  }
+
+  /* ================== util ================== */
+  private handle = (err: HttpErrorResponse) => {
+    const msg =
+      (typeof err.error === 'string' && err.error.trim()) ||
+      (err.error && (err.error.message || err.error.detail || err.error.error)) ||
+      err.statusText ||
+      err.message ||
+      'Errore';
+    return throwError(() => new Error(msg));
+  };
+
+  private pad(n: number): string { return n < 10 ? '0' + n : '' + n; }
+  private todayIso(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())}`;
+  }
+  private toIsoDate(d: Date): string {
+    return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())}`;
   }
 }
